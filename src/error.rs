@@ -37,6 +37,9 @@ pub enum Error {
     #[error("Analysis error: {0}")]
     Analysis(String),
 
+    #[error("Parser error: {0}")]
+    Parser(String),
+
     #[error("{0}")]
     Other(String),
 }
@@ -61,6 +64,11 @@ impl Error {
     /// Create an analysis error
     pub fn analysis(msg: impl Into<String>) -> Self {
         Error::Analysis(msg.into())
+    }
+
+    /// Create a parser error
+    pub fn parser(msg: impl Into<String>) -> Self {
+        Error::Parser(msg.into())
     }
 
     /// Create a generic error
@@ -109,6 +117,12 @@ mod tests {
     fn test_other_error() {
         let err = Error::other("something went wrong");
         assert_eq!(err.to_string(), "something went wrong");
+    }
+
+    #[test]
+    fn test_parser_error() {
+        let err = Error::parser("unexpected token");
+        assert_eq!(err.to_string(), "Parser error: unexpected token");
     }
 
     #[test]
