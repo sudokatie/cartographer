@@ -92,6 +92,15 @@ impl TemplateEngine {
         context.insert("classes", &classes);
         context.insert("functions", &functions);
         
+        // Calculate module stats
+        let stats = ModulePageStats {
+            file_count: files.len(),
+            code_lines: files.iter().map(|f| f.code_lines).sum(),
+            class_count: classes.len(),
+            function_count: functions.len(),
+        };
+        context.insert("stats", &stats);
+        
         Ok(self.tera.render("module.html", &context)?)
     }
     
@@ -219,6 +228,15 @@ fn html_escape(s: &str) -> String {
         .replace('>', "&gt;")
         .replace('"', "&quot;")
         .replace('\'', "&#39;")
+}
+
+/// Stats for module page template
+#[derive(Debug, Serialize)]
+pub struct ModulePageStats {
+    pub file_count: usize,
+    pub code_lines: usize,
+    pub class_count: usize,
+    pub function_count: usize,
 }
 
 /// Context for rendering the search index
