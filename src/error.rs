@@ -34,6 +34,9 @@ pub enum Error {
     #[error("Directory walk error: {0}")]
     WalkDir(#[from] walkdir::Error),
 
+    #[error("Analysis error: {0}")]
+    Analysis(String),
+
     #[error("{0}")]
     Other(String),
 }
@@ -53,6 +56,11 @@ impl Error {
             path: path.into(),
             message: message.into(),
         }
+    }
+
+    /// Create an analysis error
+    pub fn analysis(msg: impl Into<String>) -> Self {
+        Error::Analysis(msg.into())
     }
 
     /// Create a generic error
@@ -89,6 +97,12 @@ mod tests {
     fn test_config_validation_display() {
         let err = Error::config_validation("depth must be positive");
         assert_eq!(err.to_string(), "Config validation error: depth must be positive");
+    }
+
+    #[test]
+    fn test_analysis_error() {
+        let err = Error::analysis("circular dependency detected");
+        assert_eq!(err.to_string(), "Analysis error: circular dependency detected");
     }
 
     #[test]

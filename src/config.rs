@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
 /// Main configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Config {
     pub project: ProjectConfig,
@@ -67,17 +67,6 @@ pub enum DiagramLayout {
     Hierarchical,
     Force,
     Radial,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            project: ProjectConfig::default(),
-            analysis: AnalysisConfig::default(),
-            output: OutputConfig::default(),
-            diagrams: DiagramConfig::default(),
-        }
-    }
 }
 
 impl Default for ProjectConfig {
