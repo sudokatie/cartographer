@@ -1,6 +1,6 @@
 // Code graph for representing project structure
 
-use crate::parser::{Class, Constant, Function, Import, ParsedFile};
+use crate::parser::{Class, Constant, Function, Import, Parameter, ParsedFile};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -143,7 +143,9 @@ pub struct FunctionNode {
     pub class: Option<ClassId>,
     /// Function docstring
     pub docstring: Option<String>,
-    /// Function signature
+    /// Parameters with types and defaults (per SPECS.md 4.1)
+    pub parameters: Vec<Parameter>,
+    /// Function signature (convenience string representation)
     pub signature: String,
     /// Return type
     pub return_type: Option<String>,
@@ -164,6 +166,7 @@ impl FunctionNode {
             file,
             class,
             docstring: func.docstring.clone(),
+            parameters: func.parameters.clone(),
             signature: func.signature(),
             return_type: func.return_type.clone(),
             is_async: func.is_async,
@@ -512,6 +515,7 @@ mod tests {
             file: FileId(0),
             class: None,
             docstring: None,
+            parameters: Vec::new(),
             signature: "def test_something()".to_string(),
             return_type: None,
             is_async: false,
@@ -525,6 +529,7 @@ mod tests {
             file: FileId(0),
             class: None,
             docstring: None,
+            parameters: Vec::new(),
             signature: "def do_something()".to_string(),
             return_type: None,
             is_async: false,
