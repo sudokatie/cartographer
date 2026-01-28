@@ -9,6 +9,18 @@
 <p class="description">{{ module.description }}</p>
 {% endif %}
 
+{% if module.stats %}
+<section class="metrics">
+    <h2>Metrics</h2>
+    <ul>
+        <li><strong>Files:</strong> {{ module.stats.file_count }}</li>
+        <li><strong>Lines of Code:</strong> {{ module.stats.code_lines }}</li>
+        <li><strong>Classes:</strong> {{ module.stats.class_count }}</li>
+        <li><strong>Functions:</strong> {{ module.stats.function_count }}</li>
+    </ul>
+</section>
+{% endif %}
+
 <section class="files">
     <h2>Files</h2>
     <ul>
