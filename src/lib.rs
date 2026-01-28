@@ -3,12 +3,14 @@
 //! Analyzes Python codebases and generates architecture documentation
 //! as a static HTML site.
 
+pub mod analysis;
 pub mod cli;
 pub mod config;
 pub mod error;
 pub mod parser;
 
 // Re-export main types
+pub use analysis::{CodeGraph, FileId, ClassId, FunctionId};
 pub use cli::{Args, Command};
 pub use config::Config;
 pub use error::{Error, Result};
