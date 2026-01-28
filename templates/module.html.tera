@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}{{ module.name }} - Documentation{% endblock %}
+
+{% block content %}
+<h1>{{ module.name }}</h1>
+
+{% if module.description %}
+<p class="description">{{ module.description }}</p>
+{% endif %}
+
+<section class="files">
+    <h2>Files</h2>
+    <ul>
+        {% for file in files %}
+        <li>
+            <code>{{ file.path }}</code>
+            {% if file.docstring %}
+            <p>{{ file.docstring | truncate_words(count=20) }}</p>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+
+{% if classes | length > 0 %}
+<section class="classes">
+    <h2>Classes</h2>
+    <ul>
+        {% for class in classes %}
+        <li>
+            <a href="{{ class.name | slugify }}.html">{{ class.name }}</a>
+            {% if class.bases | length > 0 %}
+            <span class="bases">({{ class.bases | join(sep=", ") }})</span>
+            {% endif %}
+            {% if class.docstring %}
+            <p>{{ class.docstring | truncate_words(count=20) }}</p>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
+{% if functions | length > 0 %}
+<section class="functions">
+    <h2>Functions</h2>
+    <ul>
+        {% for func in functions %}
+        <li>
+            <code>{{ func.signature }}</code>
+            {% if func.docstring %}
+            <p>{{ func.docstring | truncate_words(count=20) }}</p>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+{% endblock %}

@@ -7,6 +7,7 @@ pub mod analysis;
 pub mod cli;
 pub mod config;
 pub mod error;
+pub mod output;
 pub mod parser;
 
 // Re-export main types

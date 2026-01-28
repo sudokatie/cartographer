@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}{{ function.name }} - Documentation{% endblock %}
+
+{% block content %}
+<nav class="breadcrumb">
+    <a href="../../index.html">Home</a> &gt;
+    {% if file %}
+    <span>{{ file.module_name }}</span> &gt;
+    {% endif %}
+    {% if class %}
+    <span>{{ class.name }}</span> &gt;
+    {% endif %}
+    <span>{{ function.name }}</span>
+</nav>
+
+<h1>
+    {% if function.is_async %}async {% endif %}
+    {% if class %}def {{ class.name }}.{{ function.name }}{% else %}def {{ function.name }}{% endif %}
+</h1>
+
+<section class="signature">
+    <code>{{ function.signature }}</code>
+</section>
+
+{% if function.decorators | length > 0 %}
+<p class="decorators">
+    {% for decorator in function.decorators %}
+    <code>@{{ decorator }}</code>
+    {% endfor %}
+</p>
+{% endif %}
+
+{% if function.docstring %}
+<section class="docstring">
+    <p>{{ function.docstring }}</p>
+</section>
+{% endif %}
+
+{% if function.parameters | length > 0 %}
+<section class="parameters">
+    <h2>Parameters</h2>
+    <ul>
+        {% for param in function.parameters %}
+        <li>
+            <code>{{ param.name }}</code>
+            {% if param.type_hint %}
+            : <code>{{ param.type_hint }}</code>
+            {% endif %}
+            {% if param.default %}
+            = <code>{{ param.default }}</code>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
+{% if function.return_type %}
+<section class="returns">
+    <h2>Returns</h2>
+    <code>{{ function.return_type }}</code>
+</section>
+{% endif %}
+
+<section class="source">
+    <p>Defined at lines {{ function.line_start }}-{{ function.line_end }}</p>
+</section>
+{% endblock %}

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Cartographer Docs{% endblock %}</title>
+    <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+    <nav class="sidebar">
+        {% block sidebar %}{% endblock %}
+    </nav>
+    <main class="content">
+        {% block content %}{% endblock %}
+    </main>
+    <script src="assets/script.js"></script>
+</body>
+</html>

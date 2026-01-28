@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}{{ class.name }} - Documentation{% endblock %}
+
+{% block content %}
+<nav class="breadcrumb">
+    <a href="../../index.html">Home</a> &gt;
+    {% if file %}
+    <span>{{ file.module_name }}</span> &gt;
+    {% endif %}
+    <span>{{ class.name }}</span>
+</nav>
+
+<h1>class {{ class.name }}</h1>
+
+{% if class.bases | length > 0 %}
+<p class="inheritance">Inherits from: {{ class.bases | join(sep=", ") }}</p>
+{% endif %}
+
+{% if class.decorators | length > 0 %}
+<p class="decorators">
+    {% for decorator in class.decorators %}
+    <code>@{{ decorator }}</code>
+    {% endfor %}
+</p>
+{% endif %}
+
+{% if class.docstring %}
+<section class="docstring">
+    <p>{{ class.docstring }}</p>
+</section>
+{% endif %}
+
+<section class="source">
+    <p>Defined at lines {{ class.line_start }}-{{ class.line_end }}</p>
+</section>
+
+{% if methods | length > 0 %}
+<section class="methods">
+    <h2>Methods</h2>
+    <ul>
+        {% for method in methods %}
+        <li>
+            <code>{{ method.signature }}</code>
+            {% if method.docstring %}
+            <p>{{ method.docstring | truncate_words(count=30) }}</p>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+{% endblock %}

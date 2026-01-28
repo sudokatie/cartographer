@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project_name }} - Documentation{% endblock %}
+
+{% block sidebar %}
+<h2>{{ project_name }}</h2>
+<ul>
+    {% for module in modules %}
+    <li><a href="modules/{{ module.name | slugify }}/index.html">{{ module.name }}</a></li>
+    {% endfor %}
+</ul>
+{% endblock %}
+
+{% block content %}
+<h1>{{ project_name }}</h1>
+
+<section class="stats">
+    <h2>Project Statistics</h2>
+    <ul>
+        <li><strong>Files:</strong> {{ stats.files }}</li>
+        <li><strong>Classes:</strong> {{ stats.classes }}</li>
+        <li><strong>Functions:</strong> {{ stats.functions }}</li>
+        <li><strong>Lines of Code:</strong> {{ stats.code_lines }}</li>
+    </ul>
+</section>
+
+<section class="modules">
+    <h2>Modules</h2>
+    <ul>
+        {% for module in modules %}
+        <li>
+            <a href="modules/{{ module.name | slugify }}/index.html">{{ module.name }}</a>
+            {% if module.description %}
+            <p>{{ module.description }}</p>
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endblock %}
