@@ -395,7 +395,7 @@ impl MetricsCalculator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::{Class, Function, Import, ParsedFile};
+    use crate::parser::{Function, Import, ParsedFile};
     use std::path::PathBuf;
 
     fn make_test_file() -> ParsedFile {

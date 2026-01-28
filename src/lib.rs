@@ -19,5 +19,9 @@ pub use analysis::{
 pub use cli::{Args, Command};
 pub use config::Config;
 pub use error::{Error, Result};
-pub use output::{TemplateEngine, SearchEntry, ModulePageStats, slugify};
+pub use output::{
+    TemplateEngine, SearchEntry, ModulePageStats, slugify,
+    HtmlGenerator, HtmlConfig, GenerationReport,
+    DiagramGenerator,
+};
 pub use parser::{ParsedFile, PythonParser, Parameter};

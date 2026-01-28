@@ -365,6 +365,92 @@ impl CodeGraph {
             .collect()
     }
 
+    /// Get transitive imports up to a maximum depth (SPECS.md 4.2)
+    pub fn transitive_imports(&self, file: FileId, max_depth: usize) -> Vec<FileId> {
+        use std::collections::HashSet;
+        
+        let mut visited: HashSet<FileId> = HashSet::new();
+        let mut result: Vec<FileId> = Vec::new();
+        let mut current_level: Vec<FileId> = vec![file];
+        
+        for _ in 0..max_depth {
+            let mut next_level: Vec<FileId> = Vec::new();
+            
+            for current_file in current_level {
+                for imported in self.imports_of(current_file) {
+                    if visited.insert(imported) && imported != file {
+                        result.push(imported);
+                        next_level.push(imported);
+                    }
+                }
+            }
+            
+            if next_level.is_empty() {
+                break;
+            }
+            current_level = next_level;
+        }
+        
+        result
+    }
+
+    /// Detect circular dependencies in the import graph (SPECS.md 4.2)
+    /// Returns a list of cycles, where each cycle is a vec of file IDs forming the loop
+    pub fn detect_circular_dependencies(&self) -> Vec<Vec<FileId>> {
+        use std::collections::HashSet;
+        
+        let mut cycles: Vec<Vec<FileId>> = Vec::new();
+        let mut visited: HashSet<FileId> = HashSet::new();
+        
+        for &file_id in self.files.keys() {
+            if visited.contains(&file_id) {
+                continue;
+            }
+            
+            // DFS to find cycles
+            let mut path: Vec<FileId> = Vec::new();
+            let mut path_set: HashSet<FileId> = HashSet::new();
+            self.find_cycles_dfs(file_id, &mut path, &mut path_set, &mut visited, &mut cycles);
+        }
+        
+        cycles
+    }
+
+    fn find_cycles_dfs(
+        &self,
+        file: FileId,
+        path: &mut Vec<FileId>,
+        path_set: &mut std::collections::HashSet<FileId>,
+        visited: &mut std::collections::HashSet<FileId>,
+        cycles: &mut Vec<Vec<FileId>>,
+    ) {
+        if path_set.contains(&file) {
+            // Found a cycle - extract it
+            if let Some(start) = path.iter().position(|&f| f == file) {
+                let cycle: Vec<FileId> = path[start..].to_vec();
+                if cycle.len() > 1 {
+                    cycles.push(cycle);
+                }
+            }
+            return;
+        }
+        
+        if visited.contains(&file) {
+            return;
+        }
+        
+        path.push(file);
+        path_set.insert(file);
+        
+        for imported in self.imports_of(file) {
+            self.find_cycles_dfs(imported, path, path_set, visited, cycles);
+        }
+        
+        path.pop();
+        path_set.remove(&file);
+        visited.insert(file);
+    }
+
     /// Iterate over all files
     pub fn all_files(&self) -> impl Iterator<Item = (FileId, &FileNode)> {
         self.files.iter().map(|(&id, node)| (id, node))
@@ -540,5 +626,71 @@ mod tests {
         
         assert!(test_func.is_test());
         assert!(!regular_func.is_test());
+    }
+
+    #[test]
+    fn test_transitive_imports() {
+        let mut graph = CodeGraph::new();
+        let a = graph.add_file(&make_parsed_file("a"));
+        let b = graph.add_file(&make_parsed_file("b"));
+        let c = graph.add_file(&make_parsed_file("c"));
+        let d = graph.add_file(&make_parsed_file("d"));
+        
+        // a -> b -> c -> d
+        graph.add_edge(Edge::imports(a, b));
+        graph.add_edge(Edge::imports(b, c));
+        graph.add_edge(Edge::imports(c, d));
+        
+        // Depth 1 should get only b
+        let trans1 = graph.transitive_imports(a, 1);
+        assert_eq!(trans1, vec![b]);
+        
+        // Depth 2 should get b, c
+        let trans2 = graph.transitive_imports(a, 2);
+        assert!(trans2.contains(&b));
+        assert!(trans2.contains(&c));
+        assert_eq!(trans2.len(), 2);
+        
+        // Depth 3 should get b, c, d
+        let trans3 = graph.transitive_imports(a, 3);
+        assert!(trans3.contains(&b));
+        assert!(trans3.contains(&c));
+        assert!(trans3.contains(&d));
+        assert_eq!(trans3.len(), 3);
+    }
+
+    #[test]
+    fn test_detect_circular_dependencies() {
+        let mut graph = CodeGraph::new();
+        let a = graph.add_file(&make_parsed_file("a"));
+        let b = graph.add_file(&make_parsed_file("b"));
+        let c = graph.add_file(&make_parsed_file("c"));
+        
+        // Create a cycle: a -> b -> c -> a
+        graph.add_edge(Edge::imports(a, b));
+        graph.add_edge(Edge::imports(b, c));
+        graph.add_edge(Edge::imports(c, a));
+        
+        let cycles = graph.detect_circular_dependencies();
+        assert!(!cycles.is_empty());
+        
+        // The cycle should contain a, b, c
+        let cycle = &cycles[0];
+        assert!(cycle.contains(&a) || cycle.contains(&b) || cycle.contains(&c));
+    }
+
+    #[test]
+    fn test_no_circular_dependencies() {
+        let mut graph = CodeGraph::new();
+        let a = graph.add_file(&make_parsed_file("a"));
+        let b = graph.add_file(&make_parsed_file("b"));
+        let c = graph.add_file(&make_parsed_file("c"));
+        
+        // Linear chain: a -> b -> c (no cycle)
+        graph.add_edge(Edge::imports(a, b));
+        graph.add_edge(Edge::imports(b, c));
+        
+        let cycles = graph.detect_circular_dependencies();
+        assert!(cycles.is_empty());
     }
 }

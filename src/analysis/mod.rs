@@ -148,7 +148,7 @@ impl Analyzer {
                 }
             } else if pattern.starts_with("*.") {
                 let ext = pattern.trim_start_matches("*.");
-                if path.extension().map_or(false, |e| e == ext) {
+                if path.extension().is_some_and(|e| e == ext) {
                     return true;
                 }
             } else if relative_str.contains(pattern) {
@@ -239,7 +239,7 @@ impl Analyzer {
     }
     
     /// Resolve imports and add edges to the graph
-    fn resolve_imports(&self, graph: &mut CodeGraph, root: &Path, resolver: &ImportResolver) {
+    fn resolve_imports(&self, graph: &mut CodeGraph, _root: &Path, resolver: &ImportResolver) {
         // Build a map of module names to file IDs
         let module_map: HashMap<String, FileId> = graph
             .all_files()
