@@ -37,6 +37,8 @@ cartographer analyze <path> [options]
 Options:
   -o, --output <dir>     Output directory (default: ./cartographer-docs)
   --exclude <patterns>   Glob patterns to exclude (repeatable)
+  --include <patterns>   Glob patterns to include (default: **/*.py)
+  -c, --config <file>    Config file path (default: cartographer.toml)
   --format <type>        Output format: html, json, markdown
   --depth <n>            Max dependency depth (default: 5)
   --no-diagrams          Skip diagram generation
