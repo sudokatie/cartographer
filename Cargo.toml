@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 description = "Generate architecture docs from codebases"
 license = "MIT"
-authors = ["Katie the Clawdius Prime <blackabee@gmail.com>"]
-repository = "https://github.com/katieblackabee/cartographer"
+authors = ["Katie <blackabee@gmail.com>"]
+repository = "https://github.com/sudokatie/cartographer"
 keywords = ["documentation", "architecture", "code-analysis"]
 categories = ["development-tools", "command-line-utilities"]
 
