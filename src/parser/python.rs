@@ -575,6 +575,7 @@ fn parse_function_node(
         decorators,
         is_async,
         is_generator,
+        is_component: false, // Python doesn't have React components
         line_start,
         line_end,
     })
