@@ -2,7 +2,7 @@
 
 ## Current Feature: JavaScript/TypeScript Parser Integration
 
-### Overall Progress: 70%
+### Overall Progress: 95%
 
 ### Completed Tasks
 - [x] Add tree-sitter-javascript and tree-sitter-typescript dependencies
@@ -19,20 +19,21 @@
 - [x] Update CLI messaging for multi-language
 - [x] Add CommonJS require() support
 - [x] Integration tests for JS/TS analysis (basic coverage)
+- [x] Add React component detection (functional components)
+- [x] Update README with JS/TS examples
 
-### Remaining Tasks
-- [ ] Add React component detection (functional components, hooks)
-- [ ] Parse TypeScript interfaces/types
-- [ ] Update README with JS/TS examples
-- [ ] Add language filter CLI flag (optional)
+### Remaining Tasks (Optional/Future)
+- [ ] Parse TypeScript interfaces/types (lower priority - TS parses fine)
+- [ ] Add language filter CLI flag (nice-to-have)
 
 ### Technical Notes
 - JavaScriptParser is in src/parser/javascript.rs, exported via mod.rs
 - Analyzer in src/analysis/mod.rs now dispatches to appropriate parser
 - Language enum in analysis/mod.rs handles extension detection
 - CommonJS require() patterns fully supported
+- React components detected via PascalCase + JSX return
 - JSX is handled by tree-sitter-javascript
 - TSX is handled by tree-sitter-typescript
 
 ### Last Updated
-2026-02-09 Session 2b
+2026-02-09 Session 2c
