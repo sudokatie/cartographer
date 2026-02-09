@@ -146,10 +146,21 @@ impl JavaScriptParser {
                     file.functions.push(func);
                 }
             }
-            // Arrow functions assigned to const/let/var
+            // Arrow functions assigned to const/let/var, or CommonJS require
             "lexical_declaration" | "variable_declaration" => {
+                // Check for arrow function
                 if let Some(func) = parse_arrow_function(node, source) {
                     file.functions.push(func);
+                }
+                // Check for require() call
+                if let Some(import) = parse_require(node, source) {
+                    file.imports.push(import);
+                }
+            }
+            // Expression statements might contain require()
+            "expression_statement" => {
+                if let Some(import) = parse_require_expression(node, source) {
+                    file.imports.push(import);
                 }
             }
             _ => {
@@ -281,6 +292,125 @@ fn parse_import(node: &Node, source: &[u8]) -> Option<Import> {
         kind,
         line: node.start_position().row + 1,
     })
+}
+
+/// Parse a CommonJS require() from a variable declaration
+/// Handles: const foo = require('module')
+/// Handles: const { bar } = require('module')
+fn parse_require(node: &Node, source: &[u8]) -> Option<Import> {
+    // Look for variable_declarator with a call_expression calling require
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if child.kind() == "variable_declarator" {
+            if let Some(value) = child.child_by_field_name("value") {
+                if value.kind() == "call_expression" {
+                    if let Some(callee) = value.child_by_field_name("function") {
+                        if get_text(&callee, source) == "require" {
+                            // Found a require() call - extract module name
+                            if let Some(args) = value.child_by_field_name("arguments") {
+                                let mut args_cursor = args.walk();
+                                for arg in args.children(&mut args_cursor) {
+                                    if arg.kind() == "string" {
+                                        let module = get_text(&arg, source)
+                                            .trim_matches(|c| c == '"' || c == '\'' || c == '`')
+                                            .to_string();
+                                        
+                                        let is_relative = module.starts_with('.');
+                                        
+                                        // Extract imported names from the pattern
+                                        let mut names = Vec::new();
+                                        if let Some(name_node) = child.child_by_field_name("name") {
+                                            match name_node.kind() {
+                                                "identifier" => {
+                                                    // const foo = require('module')
+                                                    names.push(ImportedName::new(get_text(&name_node, source)));
+                                                }
+                                                "object_pattern" => {
+                                                    // const { foo, bar } = require('module')
+                                                    let mut pattern_cursor = name_node.walk();
+                                                    for prop in name_node.children(&mut pattern_cursor) {
+                                                        if prop.kind() == "shorthand_property_identifier_pattern" {
+                                                            names.push(ImportedName::new(get_text(&prop, source)));
+                                                        } else if prop.kind() == "pair_pattern" {
+                                                            if let Some(key) = prop.child_by_field_name("key") {
+                                                                if let Some(value) = prop.child_by_field_name("value") {
+                                                                    names.push(ImportedName::with_alias(
+                                                                        get_text(&key, source),
+                                                                        get_text(&value, source),
+                                                                    ));
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                                _ => {}
+                                            }
+                                        }
+                                        
+                                        let kind = if is_relative {
+                                            let level = module.chars().take_while(|c| *c == '.').count();
+                                            ImportKind::Relative { level }
+                                        } else {
+                                            ImportKind::From
+                                        };
+                                        
+                                        return Some(Import {
+                                            module,
+                                            names,
+                                            kind,
+                                            line: node.start_position().row + 1,
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Parse a standalone require() expression (side-effect import)
+/// Handles: require('module')
+fn parse_require_expression(node: &Node, source: &[u8]) -> Option<Import> {
+    // Look for a call_expression directly in the expression_statement
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if child.kind() == "call_expression" {
+            if let Some(callee) = child.child_by_field_name("function") {
+                if get_text(&callee, source) == "require" {
+                    if let Some(args) = child.child_by_field_name("arguments") {
+                        let mut args_cursor = args.walk();
+                        for arg in args.children(&mut args_cursor) {
+                            if arg.kind() == "string" {
+                                let module = get_text(&arg, source)
+                                    .trim_matches(|c| c == '"' || c == '\'' || c == '`')
+                                    .to_string();
+                                
+                                let is_relative = module.starts_with('.');
+                                let kind = if is_relative {
+                                    let level = module.chars().take_while(|c| *c == '.').count();
+                                    ImportKind::Relative { level }
+                                } else {
+                                    ImportKind::Direct
+                                };
+                                
+                                return Some(Import {
+                                    module,
+                                    names: Vec::new(),
+                                    kind,
+                                    line: node.start_position().row + 1,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
 }
 
 /// Parse a class declaration
@@ -590,5 +720,43 @@ function greet(user: User): string {
         
         // Should parse without errors
         assert!(result.functions.len() >= 1);
+    }
+
+    #[test]
+    fn test_parse_commonjs_require() {
+        let mut parser = JavaScriptParser::new().unwrap();
+        let source = r#"
+const fs = require('fs');
+const { readFile, writeFile } = require('fs');
+const path = require('path');
+const utils = require('./utils');
+require('side-effect');
+"#;
+        let result = parser.parse_source(
+            source,
+            std::path::PathBuf::from("test.js"),
+            "test".to_string(),
+            JsVariant::JavaScript,
+        ).unwrap();
+        
+        // Should have 5 imports
+        assert_eq!(result.imports.len(), 5);
+        
+        // Check fs import
+        assert_eq!(result.imports[0].module, "fs");
+        assert_eq!(result.imports[0].names.len(), 1);
+        assert_eq!(result.imports[0].names[0].name, "fs");
+        
+        // Check destructured import
+        assert_eq!(result.imports[1].module, "fs");
+        assert_eq!(result.imports[1].names.len(), 2);
+        
+        // Check relative import
+        assert_eq!(result.imports[3].module, "./utils");
+        assert!(result.imports[3].kind.is_relative());
+        
+        // Check side-effect import
+        assert_eq!(result.imports[4].module, "side-effect");
+        assert!(result.imports[4].names.is_empty());
     }
 }
