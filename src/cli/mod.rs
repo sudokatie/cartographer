@@ -79,8 +79,27 @@ fn execute(args: Args) -> Result<()> {
             let mut analyzer = Analyzer::new(cfg.clone())?.with_verbose(verbose);
 
             println!("Discovering files...");
-            let file_count = analyzer.file_count(&path)?;
-            println!("Found {} Python files", file_count);
+            let counts = analyzer.file_counts(&path)?;
+            
+            // Build language breakdown string
+            let mut langs = Vec::new();
+            if counts.python > 0 {
+                langs.push(format!("{} Python", counts.python));
+            }
+            if counts.javascript > 0 {
+                langs.push(format!("{} JavaScript", counts.javascript));
+            }
+            if counts.typescript > 0 {
+                langs.push(format!("{} TypeScript", counts.typescript));
+            }
+            
+            if langs.is_empty() {
+                println!("Found {} source files", counts.total());
+            } else if langs.len() == 1 {
+                println!("Found {} files", langs[0]);
+            } else {
+                println!("Found {} source files ({})", counts.total(), langs.join(", "));
+            }
 
             println!("Analyzing codebase...");
             let analysis = analyzer.analyze(&path)?;

@@ -328,7 +328,7 @@ fn test_analyze_empty_directory() {
     let result = analyzer.analyze(empty_dir.path());
     
     assert!(result.is_err(), "Should error on empty directory");
-    assert!(result.unwrap_err().to_string().contains("No Python files"));
+    assert!(result.unwrap_err().to_string().contains("No source files"));
 }
 
 // ============================================================================

@@ -12,11 +12,36 @@ pub use modules::*;
 
 use crate::config::Config;
 use crate::error::{Error, Result};
-use crate::parser::PythonParser;
+use crate::parser::{JavaScriptParser, PythonParser};
 use indicatif::{ProgressBar, ProgressStyle};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
+
+/// Supported programming languages
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Language {
+    Python,
+    JavaScript,
+    TypeScript,
+}
+
+impl Language {
+    /// Detect language from file extension
+    pub fn from_extension(ext: &str) -> Option<Self> {
+        match ext.to_lowercase().as_str() {
+            "py" => Some(Self::Python),
+            "js" | "jsx" | "mjs" | "cjs" => Some(Self::JavaScript),
+            "ts" | "tsx" | "mts" | "cts" => Some(Self::TypeScript),
+            _ => None,
+        }
+    }
+
+    /// Check if extension is supported
+    pub fn is_supported(ext: &str) -> bool {
+        Self::from_extension(ext).is_some()
+    }
+}
 
 /// Result of analyzing a codebase
 #[derive(Debug)]
@@ -31,21 +56,38 @@ pub struct AnalysisResult {
     pub parse_errors: HashMap<PathBuf, String>,
 }
 
+/// File counts by language for reporting
+#[derive(Debug, Default)]
+pub struct LanguageCounts {
+    pub python: usize,
+    pub javascript: usize,
+    pub typescript: usize,
+}
+
+impl LanguageCounts {
+    pub fn total(&self) -> usize {
+        self.python + self.javascript + self.typescript
+    }
+}
+
 /// Main analyzer that orchestrates the analysis pipeline
 pub struct Analyzer {
     config: Config,
-    parser: PythonParser,
+    python_parser: PythonParser,
+    js_parser: JavaScriptParser,
     verbose: bool,
 }
 
 impl Analyzer {
     /// Create a new analyzer with the given configuration
     pub fn new(config: Config) -> Result<Self> {
-        let parser = PythonParser::new()?;
+        let python_parser = PythonParser::new()?;
+        let js_parser = JavaScriptParser::new()?;
         
         Ok(Self {
             config,
-            parser,
+            python_parser,
+            js_parser,
             verbose: false,
         })
     }
@@ -65,15 +107,15 @@ impl Analyzer {
             ))
         })?;
         
-        // Step 1: Discover Python files
-        let py_files = self.discover_files(&root)?;
+        // Step 1: Discover source files (all supported languages)
+        let source_files = self.discover_files(&root)?;
         
-        if py_files.is_empty() {
-            return Err(Error::Analysis("No Python files found".to_string()));
+        if source_files.is_empty() {
+            return Err(Error::Analysis("No source files found".to_string()));
         }
         
         // Step 2: Parse all files and build graph
-        let (mut graph, parse_errors) = self.parse_and_build_graph(&py_files, &root)?;
+        let (mut graph, parse_errors) = self.parse_and_build_graph(&source_files, &root)?;
         
         // Step 3: Create import resolver for this project
         let import_resolver = ImportResolver::new(root.clone());
@@ -97,7 +139,7 @@ impl Analyzer {
         })
     }
     
-    /// Discover all Python files in the directory
+    /// Discover all source files in the directory (Python, JS, TS)
     fn discover_files(&self, root: &Path) -> Result<Vec<PathBuf>> {
         let mut files = Vec::new();
         
@@ -113,12 +155,13 @@ impl Analyzer {
                 continue;
             }
             
-            // Check if it's a Python file
-            if let Some(ext) = path.extension() {
-                if ext != "py" {
-                    continue;
-                }
-            } else {
+            // Check if it's a supported source file
+            let ext = match path.extension().and_then(|e| e.to_str()) {
+                Some(e) => e,
+                None => continue,
+            };
+            
+            if !Language::is_supported(ext) {
                 continue;
             }
             
@@ -132,6 +175,25 @@ impl Analyzer {
         
         files.sort();
         Ok(files)
+    }
+
+    /// Count files by language for reporting
+    pub fn file_counts(&self, root: &Path) -> Result<LanguageCounts> {
+        let files = self.discover_files(root)?;
+        let mut counts = LanguageCounts::default();
+        
+        for path in files {
+            if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                match Language::from_extension(ext) {
+                    Some(Language::Python) => counts.python += 1,
+                    Some(Language::JavaScript) => counts.javascript += 1,
+                    Some(Language::TypeScript) => counts.typescript += 1,
+                    None => {}
+                }
+            }
+        }
+        
+        Ok(counts)
     }
     
     /// Check if a path should be excluded based on config patterns
@@ -196,10 +258,21 @@ impl Analyzer {
                 pb.inc(1);
             }
             
-            match self.parser.parse_file(path) {
+            let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+            let language = Language::from_extension(ext);
+            
+            let parse_result = match language {
+                Some(Language::Python) => self.python_parser.parse_file(path),
+                Some(Language::JavaScript) | Some(Language::TypeScript) => {
+                    self.js_parser.parse_file(path)
+                }
+                None => continue,
+            };
+            
+            match parse_result {
                 Ok(mut parsed_file) => {
-                    // Set the module name based on path
-                    parsed_file.module_name = self.path_to_module_name(path, root);
+                    // Set the module name based on path and language
+                    parsed_file.module_name = self.path_to_module_name(path, root, language);
                     graph.add_file(&parsed_file);
                 }
                 Err(e) => {
@@ -215,27 +288,49 @@ impl Analyzer {
         Ok((graph, errors))
     }
     
-    /// Convert a file path to a Python module name
-    fn path_to_module_name(&self, path: &Path, root: &Path) -> String {
+    /// Convert a file path to a module name based on language conventions
+    fn path_to_module_name(&self, path: &Path, root: &Path, language: Option<Language>) -> String {
         let relative = path.strip_prefix(root).unwrap_or(path);
-        let mut parts: Vec<&str> = relative
+        let mut parts: Vec<String> = relative
             .iter()
             .filter_map(|s| s.to_str())
+            .map(|s| s.to_string())
             .collect();
         
-        // Remove .py extension from last part
+        // Remove extension from last part
         if let Some(last) = parts.last_mut() {
-            if last.ends_with(".py") {
-                *last = last.trim_end_matches(".py");
+            // Remove any supported extension
+            let extensions = [".py", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".mts", ".cts"];
+            for ext in extensions {
+                if last.ends_with(ext) {
+                    *last = last.trim_end_matches(ext).to_string();
+                    break;
+                }
             }
         }
         
-        // Handle __init__.py
-        if parts.last() == Some(&"__init__") {
-            parts.pop();
+        // Handle index files based on language
+        match language {
+            Some(Language::Python) => {
+                // Handle __init__.py
+                if parts.last().map(|s| s.as_str()) == Some("__init__") {
+                    parts.pop();
+                }
+            }
+            Some(Language::JavaScript) | Some(Language::TypeScript) => {
+                // Handle index.js/index.ts
+                if parts.last().map(|s| s.as_str()) == Some("index") {
+                    parts.pop();
+                }
+            }
+            None => {}
         }
         
-        parts.join(".")
+        // Use / for JS/TS, . for Python
+        match language {
+            Some(Language::JavaScript) | Some(Language::TypeScript) => parts.join("/"),
+            _ => parts.join("."),
+        }
     }
     
     /// Resolve imports and add edges to the graph
@@ -379,21 +474,41 @@ def helper():
     }
     
     #[test]
-    fn test_path_to_module_name() {
+    fn test_path_to_module_name_python() {
         let config = Config::default();
         let analyzer = Analyzer::new(config).unwrap();
         let root = Path::new("/project");
         
         assert_eq!(
-            analyzer.path_to_module_name(Path::new("/project/src/main.py"), root),
+            analyzer.path_to_module_name(Path::new("/project/src/main.py"), root, Some(Language::Python)),
             "src.main"
         );
         assert_eq!(
-            analyzer.path_to_module_name(Path::new("/project/src/__init__.py"), root),
+            analyzer.path_to_module_name(Path::new("/project/src/__init__.py"), root, Some(Language::Python)),
             "src"
         );
         assert_eq!(
-            analyzer.path_to_module_name(Path::new("/project/utils.py"), root),
+            analyzer.path_to_module_name(Path::new("/project/utils.py"), root, Some(Language::Python)),
+            "utils"
+        );
+    }
+
+    #[test]
+    fn test_path_to_module_name_javascript() {
+        let config = Config::default();
+        let analyzer = Analyzer::new(config).unwrap();
+        let root = Path::new("/project");
+        
+        assert_eq!(
+            analyzer.path_to_module_name(Path::new("/project/src/main.js"), root, Some(Language::JavaScript)),
+            "src/main"
+        );
+        assert_eq!(
+            analyzer.path_to_module_name(Path::new("/project/src/index.js"), root, Some(Language::JavaScript)),
+            "src"
+        );
+        assert_eq!(
+            analyzer.path_to_module_name(Path::new("/project/utils.ts"), root, Some(Language::TypeScript)),
             "utils"
         );
     }
@@ -424,7 +539,7 @@ def helper():
         
         let result = analyzer.analyze(dir.path());
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("No Python files"));
+        assert!(result.unwrap_err().to_string().contains("No source files"));
     }
     
     #[test]
@@ -454,5 +569,65 @@ def helper():
         let config = Config::default();
         let analyzer = Analyzer::new(config).unwrap().with_verbose(true);
         assert!(analyzer.verbose);
+    }
+
+    #[test]
+    fn test_discover_javascript_files() {
+        let dir = TempDir::new().unwrap();
+        
+        // Create JS/TS files
+        fs::write(dir.path().join("app.js"), "const x = 1;").unwrap();
+        fs::write(dir.path().join("utils.ts"), "const y: number = 2;").unwrap();
+        fs::write(dir.path().join("component.jsx"), "const C = () => <div/>;").unwrap();
+        fs::write(dir.path().join("page.tsx"), "const P = (): JSX.Element => <div/>;").unwrap();
+        fs::write(dir.path().join("script.py"), "x = 1").unwrap();
+        
+        let config = Config::default();
+        let analyzer = Analyzer::new(config).unwrap();
+        
+        let files = analyzer.discover_files(dir.path()).unwrap();
+        assert_eq!(files.len(), 5); // 4 JS/TS + 1 Python
+        
+        let counts = analyzer.file_counts(dir.path()).unwrap();
+        assert_eq!(counts.python, 1);
+        assert_eq!(counts.javascript, 2); // .js and .jsx
+        assert_eq!(counts.typescript, 2); // .ts and .tsx
+    }
+
+    #[test]
+    fn test_analyze_javascript_project() {
+        let dir = TempDir::new().unwrap();
+        
+        // Create a simple JS project
+        fs::write(
+            dir.path().join("app.js"),
+            r#"
+import { helper } from './utils.js';
+
+function main() {
+    helper();
+}
+"#,
+        ).unwrap();
+        
+        fs::write(
+            dir.path().join("utils.js"),
+            r#"
+export function helper() {
+    console.log('hello');
+}
+"#,
+        ).unwrap();
+        
+        let config = Config::default();
+        let mut analyzer = Analyzer::new(config).unwrap();
+        
+        let result = analyzer.analyze(dir.path()).unwrap();
+        
+        // Should have 2 JS files
+        assert_eq!(result.graph.stats().files, 2);
+        
+        // Should have at least 2 functions (main and helper)
+        assert!(result.graph.stats().functions >= 2);
     }
 }
