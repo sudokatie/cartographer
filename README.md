@@ -10,8 +10,9 @@ Cartographer reads your code and generates living documentation - architecture d
 
 ## Features
 
-- **Multi-language support**: Python, JavaScript, TypeScript (including JSX/TSX)
+- **Multi-language support**: Python, JavaScript, TypeScript, Rust
 - **React component detection**: Automatically identifies React functional components
+- **Rust support**: Parses structs, enums, traits, impl blocks, use statements
 - **Dependency graphs**: See what imports what, find circular dependencies
 - **Module detection**: Group files into logical components
 - **Beautiful output**: Static HTML site you can deploy anywhere
@@ -53,6 +54,7 @@ Options:
 | Python | `.py` | Classes, functions, imports, decorators |
 | JavaScript | `.js`, `.jsx`, `.mjs`, `.cjs` | ESM imports, CommonJS require, classes, React components |
 | TypeScript | `.ts`, `.tsx`, `.mts`, `.cts` | Same as JS + type annotations |
+| Rust | `.rs` | Structs, enums, traits, impl blocks, use statements, const/static |
 
 ### JavaScript/TypeScript Examples
 
@@ -71,6 +73,27 @@ Cartographer automatically detects:
 - ESM imports (`import { foo } from './module'`)
 - CommonJS requires (`const foo = require('./module')`)
 - React functional components (PascalCase functions returning JSX)
+
+### Rust Examples
+
+```bash
+# Analyze a Rust project
+cartographer analyze ./my-rust-project --exclude "target/**"
+
+# Analyze a Cargo workspace
+cartographer analyze ./workspace
+
+# Cartographer analyzing itself
+cartographer analyze .
+```
+
+Cartographer extracts from Rust code:
+- Structs, enums, and traits
+- Impl blocks (methods associated with types)
+- Use statements and module declarations
+- Const and static items
+- Async functions
+- Doc comments
 
 ## Configuration
 
@@ -95,7 +118,7 @@ directory = "./docs"
 ### v0.2 (Current)
 - [x] JavaScript/TypeScript support
 - [x] React component detection
-- [ ] Rust support
+- [x] Rust support
 - [ ] Go support
 
 ### v0.3 (Planned)

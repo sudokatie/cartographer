@@ -12,7 +12,7 @@ pub use modules::*;
 
 use crate::config::Config;
 use crate::error::{Error, Result};
-use crate::parser::{JavaScriptParser, PythonParser};
+use crate::parser::{JavaScriptParser, PythonParser, RustParser};
 use indicatif::{ProgressBar, ProgressStyle};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -24,6 +24,7 @@ pub enum Language {
     Python,
     JavaScript,
     TypeScript,
+    Rust,
 }
 
 impl Language {
@@ -33,6 +34,7 @@ impl Language {
             "py" => Some(Self::Python),
             "js" | "jsx" | "mjs" | "cjs" => Some(Self::JavaScript),
             "ts" | "tsx" | "mts" | "cts" => Some(Self::TypeScript),
+            "rs" => Some(Self::Rust),
             _ => None,
         }
     }
@@ -62,11 +64,12 @@ pub struct LanguageCounts {
     pub python: usize,
     pub javascript: usize,
     pub typescript: usize,
+    pub rust: usize,
 }
 
 impl LanguageCounts {
     pub fn total(&self) -> usize {
-        self.python + self.javascript + self.typescript
+        self.python + self.javascript + self.typescript + self.rust
     }
 }
 
@@ -75,6 +78,7 @@ pub struct Analyzer {
     config: Config,
     python_parser: PythonParser,
     js_parser: JavaScriptParser,
+    rust_parser: RustParser,
     verbose: bool,
 }
 
@@ -83,11 +87,13 @@ impl Analyzer {
     pub fn new(config: Config) -> Result<Self> {
         let python_parser = PythonParser::new()?;
         let js_parser = JavaScriptParser::new()?;
+        let rust_parser = RustParser::new()?;
         
         Ok(Self {
             config,
             python_parser,
             js_parser,
+            rust_parser,
             verbose: false,
         })
     }
@@ -188,6 +194,7 @@ impl Analyzer {
                     Some(Language::Python) => counts.python += 1,
                     Some(Language::JavaScript) => counts.javascript += 1,
                     Some(Language::TypeScript) => counts.typescript += 1,
+                    Some(Language::Rust) => counts.rust += 1,
                     None => {}
                 }
             }
@@ -266,6 +273,7 @@ impl Analyzer {
                 Some(Language::JavaScript) | Some(Language::TypeScript) => {
                     self.js_parser.parse_file(path)
                 }
+                Some(Language::Rust) => self.rust_parser.parse_file(path),
                 None => continue,
             };
             
@@ -300,7 +308,7 @@ impl Analyzer {
         // Remove extension from last part
         if let Some(last) = parts.last_mut() {
             // Remove any supported extension
-            let extensions = [".py", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".mts", ".cts"];
+            let extensions = [".py", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".mts", ".cts", ".rs"];
             for ext in extensions {
                 if last.ends_with(ext) {
                     *last = last.trim_end_matches(ext).to_string();
@@ -323,11 +331,19 @@ impl Analyzer {
                     parts.pop();
                 }
             }
+            Some(Language::Rust) => {
+                // Handle mod.rs and lib.rs
+                let last = parts.last().map(|s| s.as_str());
+                if last == Some("mod") || last == Some("lib") {
+                    parts.pop();
+                }
+            }
             None => {}
         }
         
-        // Use / for JS/TS, . for Python
+        // Use :: for Rust, / for JS/TS, . for Python
         match language {
+            Some(Language::Rust) => parts.join("::"),
             Some(Language::JavaScript) | Some(Language::TypeScript) => parts.join("/"),
             _ => parts.join("."),
         }
@@ -629,5 +645,88 @@ export function helper() {
         
         // Should have at least 2 functions (main and helper)
         assert!(result.graph.stats().functions >= 2);
+    }
+
+    #[test]
+    fn test_discover_rust_files() {
+        let dir = TempDir::new().unwrap();
+        
+        // Create Rust files
+        fs::write(dir.path().join("main.rs"), "fn main() {}").unwrap();
+        fs::write(dir.path().join("lib.rs"), "pub mod utils;").unwrap();
+        fs::write(dir.path().join("utils.rs"), "pub fn helper() {}").unwrap();
+        fs::write(dir.path().join("script.py"), "x = 1").unwrap();
+        
+        let config = Config::default();
+        let analyzer = Analyzer::new(config).unwrap();
+        
+        let files = analyzer.discover_files(dir.path()).unwrap();
+        assert_eq!(files.len(), 4); // 3 Rust + 1 Python
+        
+        let counts = analyzer.file_counts(dir.path()).unwrap();
+        assert_eq!(counts.rust, 3);
+        assert_eq!(counts.python, 1);
+    }
+
+    #[test]
+    fn test_analyze_rust_project() {
+        let dir = TempDir::new().unwrap();
+        
+        // Create a simple Rust project
+        fs::write(
+            dir.path().join("main.rs"),
+            r#"
+use std::collections::HashMap;
+
+fn main() {
+    println!("hello");
+}
+
+struct Point {
+    x: f64,
+    y: f64,
+}
+
+impl Point {
+    fn new(x: f64, y: f64) -> Self {
+        Self { x, y }
+    }
+}
+"#,
+        ).unwrap();
+        
+        let config = Config::default();
+        let mut analyzer = Analyzer::new(config).unwrap();
+        
+        let result = analyzer.analyze(dir.path()).unwrap();
+        
+        // Should have 1 Rust file
+        assert_eq!(result.graph.stats().files, 1);
+        
+        // Should have main function + Point::new
+        assert!(result.graph.stats().functions >= 2);
+        
+        // Should have Point struct
+        assert_eq!(result.graph.stats().classes, 1);
+    }
+
+    #[test]
+    fn test_path_to_module_name_rust() {
+        let config = Config::default();
+        let analyzer = Analyzer::new(config).unwrap();
+        let root = Path::new("/project");
+        
+        assert_eq!(
+            analyzer.path_to_module_name(Path::new("/project/src/main.rs"), root, Some(Language::Rust)),
+            "src::main"
+        );
+        assert_eq!(
+            analyzer.path_to_module_name(Path::new("/project/src/lib.rs"), root, Some(Language::Rust)),
+            "src"
+        );
+        assert_eq!(
+            analyzer.path_to_module_name(Path::new("/project/src/utils/mod.rs"), root, Some(Language::Rust)),
+            "src::utils"
+        );
     }
 }
