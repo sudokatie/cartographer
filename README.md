@@ -63,11 +63,18 @@ format = "html"
 directory = "./docs"
 ```
 
-## Current Limitations
+## Roadmap
 
-- Python only (more languages planned)
-- No LLM-generated explanations (template-based for now)
-- Static analysis only (won't detect runtime behavior)
+### v0.2 (Planned)
+- [ ] JavaScript/TypeScript support
+- [ ] Rust support
+- [ ] Go support
+
+### v0.3 (Planned)
+- [ ] LLM-generated explanations
+- [ ] Runtime behavior detection hints
+
+See FEATURE-BACKLOG.md in the clawd repo for detailed acceptance criteria.
 
 ## License
 
