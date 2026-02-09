@@ -241,7 +241,7 @@ fn parse_import(node: &Node, source: &[u8]) -> Option<Import> {
                     match clause_child.kind() {
                         "identifier" => {
                             // Default import
-                            names.push(ImportedName::new(&get_text(&clause_child, source)));
+                            names.push(ImportedName::new(get_text(&clause_child, source)));
                         }
                         "named_imports" => {
                             // Named imports: { foo, bar as baz }
@@ -458,7 +458,7 @@ fn parse_class(node: &Node, source: &[u8]) -> Option<Class> {
                     // Check for JSDoc comment as class docstring
                     let text = get_text(&child, source);
                     if text.starts_with("/**") && class.docstring.is_none() {
-                        class.docstring = Some(clean_jsdoc(&text));
+                        class.docstring = Some(clean_jsdoc(text));
                     }
                 }
                 _ => {}
