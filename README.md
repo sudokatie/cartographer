@@ -10,9 +10,10 @@ Cartographer reads your code and generates living documentation - architecture d
 
 ## Features
 
-- **Multi-language support**: Python, JavaScript, TypeScript, Rust
+- **Multi-language support**: Python, JavaScript, TypeScript, Rust, Go
 - **React component detection**: Automatically identifies React functional components
 - **Rust support**: Parses structs, enums, traits, impl blocks, use statements
+- **Go support**: Parses packages, structs, interfaces, methods, imports
 - **Dependency graphs**: See what imports what, find circular dependencies
 - **Module detection**: Group files into logical components
 - **Beautiful output**: Static HTML site you can deploy anywhere
@@ -55,6 +56,7 @@ Options:
 | JavaScript | `.js`, `.jsx`, `.mjs`, `.cjs` | ESM imports, CommonJS require, classes, React components |
 | TypeScript | `.ts`, `.tsx`, `.mts`, `.cts` | Same as JS + type annotations |
 | Rust | `.rs` | Structs, enums, traits, impl blocks, use statements, const/static |
+| Go | `.go` | Packages, structs, interfaces, methods, functions, const/var |
 
 ### JavaScript/TypeScript Examples
 
@@ -95,6 +97,24 @@ Cartographer extracts from Rust code:
 - Async functions
 - Doc comments
 
+### Go Examples
+
+```bash
+# Analyze a Go project
+cartographer analyze ./my-go-project --exclude "vendor/**"
+
+# Analyze a Go module
+cartographer analyze ./cmd/myapp
+```
+
+Cartographer extracts from Go code:
+- Packages and imports
+- Structs and interfaces
+- Methods with receiver types
+- Functions with variadic parameters
+- Const and var declarations
+- Comments
+
 ## Configuration
 
 Create `cartographer.toml` in your project root:
@@ -119,7 +139,7 @@ directory = "./docs"
 - [x] JavaScript/TypeScript support
 - [x] React component detection
 - [x] Rust support
-- [ ] Go support
+- [x] Go support
 
 ### v0.3 (Planned)
 - [ ] LLM-generated explanations
