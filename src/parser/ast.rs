@@ -243,6 +243,8 @@ pub struct Function {
     pub is_async: bool,
     /// Whether this is a generator (contains yield)
     pub is_generator: bool,
+    /// Whether this is a React component (returns JSX)
+    pub is_component: bool,
     /// Starting line number
     pub line_start: usize,
     /// Ending line number
@@ -259,9 +261,15 @@ impl Function {
             decorators: Vec::new(),
             is_async: false,
             is_generator: false,
+            is_component: false,
             line_start,
             line_end: line_start,
         }
+    }
+
+    /// Check if function name follows React component convention (PascalCase)
+    pub fn has_component_name(&self) -> bool {
+        self.name.chars().next().map(|c| c.is_uppercase()).unwrap_or(false)
     }
 
     /// Check if this is a private function (starts with _)

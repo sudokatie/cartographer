@@ -505,6 +505,27 @@ fn parse_attribute(node: &Node, source: &[u8]) -> Option<Attribute> {
     })
 }
 
+/// Check if a node contains JSX elements (React component indicator)
+fn contains_jsx(node: &Node) -> bool {
+    let kind = node.kind();
+    if kind == "jsx_element" || kind == "jsx_self_closing_element" || kind == "jsx_fragment" {
+        return true;
+    }
+    
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if contains_jsx(&child) {
+            return true;
+        }
+    }
+    false
+}
+
+/// Check if function name follows React component convention (PascalCase)
+fn is_component_name(name: &str) -> bool {
+    name.chars().next().map(|c| c.is_uppercase()).unwrap_or(false)
+}
+
 /// Parse a function declaration
 fn parse_function(node: &Node, source: &[u8]) -> Option<Function> {
     let name = node.child_by_field_name("name")
@@ -517,11 +538,15 @@ fn parse_function(node: &Node, source: &[u8]) -> Option<Function> {
     func.line_end = line_end;
     func.parameters = parse_parameters(node, source);
     
-    // Check for async keyword
+    // Check for async keyword and detect React component
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
         if child.kind() == "async" {
             func.is_async = true;
+        }
+        // Check body for JSX
+        if child.kind() == "statement_block" && is_component_name(&name) && contains_jsx(&child) {
+            func.is_component = true;
         }
     }
 
@@ -546,11 +571,17 @@ fn parse_arrow_function(node: &Node, source: &[u8]) -> Option<Function> {
                     func.line_end = line_end;
                     func.parameters = parse_parameters(&value, source);
                     
+                    // Check for async and React component
                     let mut value_cursor = value.walk();
                     for value_child in value.children(&mut value_cursor) {
                         if value_child.kind() == "async" {
                             func.is_async = true;
                         }
+                    }
+                    
+                    // Detect React component (PascalCase name + returns JSX)
+                    if is_component_name(&name) && contains_jsx(&value) {
+                        func.is_component = true;
                     }
 
                     return Some(func);
@@ -758,5 +789,66 @@ require('side-effect');
         // Check side-effect import
         assert_eq!(result.imports[4].module, "side-effect");
         assert!(result.imports[4].names.is_empty());
+    }
+
+    #[test]
+    fn test_detect_react_components() {
+        let mut parser = JavaScriptParser::new().unwrap();
+        let source = r#"
+// Regular function - not a component
+function helper() {
+    return 42;
+}
+
+// React component - PascalCase + returns JSX
+function MyComponent(props) {
+    return <div>{props.name}</div>;
+}
+
+// Arrow component
+const AnotherComponent = () => {
+    return <span>Hello</span>;
+};
+
+// Not a component - lowercase
+const notComponent = () => {
+    return <div>test</div>;
+};
+
+// Not a component - no JSX
+function Helper() {
+    return { data: 123 };
+}
+"#;
+        let result = parser.parse_source(
+            source,
+            std::path::PathBuf::from("test.jsx"),
+            "test".to_string(),
+            JsVariant::Jsx,
+        ).unwrap();
+        
+        // Find the functions
+        let helper = result.functions.iter().find(|f| f.name == "helper");
+        let my_component = result.functions.iter().find(|f| f.name == "MyComponent");
+        let another = result.functions.iter().find(|f| f.name == "AnotherComponent");
+        let not_component = result.functions.iter().find(|f| f.name == "notComponent");
+        let helper_upper = result.functions.iter().find(|f| f.name == "Helper");
+        
+        assert!(helper.is_some());
+        assert!(!helper.unwrap().is_component);
+        
+        assert!(my_component.is_some());
+        assert!(my_component.unwrap().is_component);
+        
+        assert!(another.is_some());
+        assert!(another.unwrap().is_component);
+        
+        // lowercase with JSX - not detected as component (intentional)
+        assert!(not_component.is_some());
+        assert!(!not_component.unwrap().is_component);
+        
+        // PascalCase but no JSX - not a component
+        assert!(helper_upper.is_some());
+        assert!(!helper_upper.unwrap().is_component);
     }
 }
