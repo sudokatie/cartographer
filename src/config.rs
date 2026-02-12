@@ -178,6 +178,7 @@ impl Config {
         format: Option<String>,
         depth: Option<usize>,
         no_diagrams: bool,
+        no_explain: bool,
     ) {
         if let Some(out) = output {
             self.output.directory = out;
@@ -201,6 +202,10 @@ impl Config {
 
         if no_diagrams {
             self.diagrams.enabled = false;
+        }
+
+        if no_explain {
+            self.llm.enabled = false;
         }
     }
 
@@ -303,7 +308,7 @@ enabled = false
     #[test]
     fn test_merge_cli_output() {
         let mut config = Config::default();
-        config.merge_cli(Some(PathBuf::from("/custom/output")), vec![], None, None, false);
+        config.merge_cli(Some(PathBuf::from("/custom/output")), vec![], None, None, false, false);
         assert_eq!(config.output.directory, PathBuf::from("/custom/output"));
     }
 
@@ -311,29 +316,37 @@ enabled = false
     fn test_merge_cli_exclude() {
         let mut config = Config::default();
         let initial_excludes = config.analysis.exclude.len();
-        config.merge_cli(None, vec!["node_modules/**".to_string()], None, None, false);
+        config.merge_cli(None, vec!["node_modules/**".to_string()], None, None, false, false);
         assert_eq!(config.analysis.exclude.len(), initial_excludes + 1);
     }
 
     #[test]
     fn test_merge_cli_format() {
         let mut config = Config::default();
-        config.merge_cli(None, vec![], Some("json".to_string()), None, false);
+        config.merge_cli(None, vec![], Some("json".to_string()), None, false, false);
         assert_eq!(config.output.format, OutputFormat::Json);
     }
 
     #[test]
     fn test_merge_cli_depth() {
         let mut config = Config::default();
-        config.merge_cli(None, vec![], None, Some(15), false);
+        config.merge_cli(None, vec![], None, Some(15), false, false);
         assert_eq!(config.analysis.max_depth, 15);
     }
 
     #[test]
     fn test_merge_cli_no_diagrams() {
         let mut config = Config::default();
-        config.merge_cli(None, vec![], None, None, true);
+        config.merge_cli(None, vec![], None, None, true, false);
         assert!(!config.diagrams.enabled);
+    }
+
+    #[test]
+    fn test_merge_cli_no_explain() {
+        let mut config = Config::default();
+        config.llm.enabled = true;
+        config.merge_cli(None, vec![], None, None, false, true);
+        assert!(!config.llm.enabled);
     }
 
     #[test]
