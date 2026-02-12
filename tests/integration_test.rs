@@ -300,6 +300,7 @@ fn test_config_merge_cli() {
         Some("json".to_string()),
         Some(10),
         true, // no_diagrams
+        false, // no_explain
     );
     
     assert_eq!(config.output.directory, PathBuf::from("/custom/output"));

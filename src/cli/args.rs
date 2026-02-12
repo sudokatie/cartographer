@@ -54,6 +54,10 @@ pub enum Command {
         #[arg(long)]
         no_diagrams: bool,
 
+        /// Skip LLM-generated explanations
+        #[arg(long)]
+        no_explain: bool,
+
         /// Verbose output
         #[arg(short, long)]
         verbose: bool,
@@ -104,13 +108,14 @@ mod tests {
             "--format", "json",
             "--depth", "10",
             "--no-diagrams",
+            "--no-explain",
             "--verbose",
         ]).unwrap();
         
         match args.command {
             Command::Analyze { 
                 path, output, exclude, include, config, 
-                format, depth, no_diagrams, verbose 
+                format, depth, no_diagrams, no_explain, verbose 
             } => {
                 assert_eq!(path, PathBuf::from("./project"));
                 assert_eq!(output, PathBuf::from("/tmp/docs"));
@@ -120,6 +125,7 @@ mod tests {
                 assert_eq!(format, "json");
                 assert_eq!(depth, 10);
                 assert!(no_diagrams);
+                assert!(no_explain);
                 assert!(verbose);
             }
             _ => panic!("Expected Analyze command"),

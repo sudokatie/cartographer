@@ -37,6 +37,7 @@ fn execute(args: Args) -> Result<()> {
             format,
             depth,
             no_diagrams,
+            no_explain,
             verbose,
         } => {
             // Load config file if it exists
@@ -54,6 +55,7 @@ fn execute(args: Args) -> Result<()> {
                 Some(format.clone()),
                 Some(depth),
                 no_diagrams,
+                no_explain,
             );
 
             // Handle include patterns
@@ -67,6 +69,7 @@ fn execute(args: Args) -> Result<()> {
                 println!("Format: {:?}", cfg.output.format);
                 println!("Depth: {}", cfg.analysis.max_depth);
                 println!("Diagrams: {}", cfg.diagrams.enabled);
+                println!("LLM Explain: {}", cfg.llm.enabled);
                 println!("Include: {:?}", cfg.analysis.include);
                 println!("Exclude: {:?}", cfg.analysis.exclude);
             }
