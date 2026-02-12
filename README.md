@@ -11,6 +11,7 @@ Cartographer reads your code and generates living documentation - architecture d
 ## Features
 
 - **Multi-language support**: Python, JavaScript, TypeScript, Rust, Go
+- **LLM explanations**: Generate natural language descriptions of modules and classes (Ollama, OpenAI)
 - **React component detection**: Automatically identifies React functional components
 - **Rust support**: Parses structs, enums, traits, impl blocks, use statements
 - **Go support**: Parses packages, structs, interfaces, methods, imports
@@ -45,6 +46,7 @@ Options:
   --format <type>        Output format: html, json, markdown
   --depth <n>            Max dependency depth (default: 5)
   --no-diagrams          Skip diagram generation
+  --no-explain           Skip LLM-generated explanations
   -v, --verbose          Verbose output
 ```
 
@@ -131,7 +133,32 @@ max_depth = 5
 [output]
 format = "html"
 directory = "./docs"
+
+[llm]
+enabled = true
+provider = "ollama"  # or "openai"
+model = "llama3.2"   # or "gpt-4", etc.
+# api_url = "http://localhost:11434"  # optional, defaults to localhost for Ollama
+# api_key = "sk-..."  # or set OPENAI_API_KEY env var for OpenAI
 ```
+
+### LLM Explanations
+
+Cartographer can use LLMs to generate natural language explanations for your code:
+
+```bash
+# Use Ollama (default, runs locally)
+cartographer analyze ./my-project
+
+# Skip LLM explanations
+cartographer analyze ./my-project --no-explain
+```
+
+Supported providers:
+- **Ollama**: Local LLM inference, no API key needed
+- **OpenAI**: Cloud-based, requires API key
+
+When LLM is unavailable or disabled, Cartographer falls back to template-based explanations.
 
 ## Roadmap
 
@@ -140,10 +167,11 @@ directory = "./docs"
 - [x] React component detection
 - [x] Rust support
 - [x] Go support
+- [x] LLM-generated explanations (Ollama, OpenAI)
 
 ### v0.3 (Planned)
-- [ ] LLM-generated explanations
 - [ ] Runtime behavior detection hints
+- [ ] IDE integration
 
 ## License
 
