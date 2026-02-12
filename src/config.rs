@@ -10,6 +10,7 @@ pub struct Config {
     pub analysis: AnalysisConfig,
     pub output: OutputConfig,
     pub diagrams: DiagramConfig,
+    pub llm: LlmConfig,
 }
 
 /// Project metadata
@@ -47,6 +48,31 @@ pub struct DiagramConfig {
     pub enabled: bool,
     pub max_nodes: usize,
     pub layout: DiagramLayout,
+}
+
+/// LLM settings for generating explanations
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct LlmConfig {
+    /// Whether to generate LLM explanations
+    pub enabled: bool,
+    /// LLM provider: ollama, openai
+    pub provider: LlmProvider,
+    /// Model name (e.g., "llama3.2", "gpt-4")
+    pub model: String,
+    /// API endpoint for Ollama or custom OpenAI-compatible API
+    pub api_url: Option<String>,
+    /// API key for OpenAI (can also use OPENAI_API_KEY env var)
+    pub api_key: Option<String>,
+}
+
+/// LLM provider
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum LlmProvider {
+    #[default]
+    Ollama,
+    OpenAI,
 }
 
 /// Output format
@@ -114,6 +140,18 @@ impl Default for DiagramConfig {
             enabled: true,
             max_nodes: 100,
             layout: DiagramLayout::default(),
+        }
+    }
+}
+
+impl Default for LlmConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            provider: LlmProvider::default(),
+            model: "llama3.2".to_string(),
+            api_url: None,
+            api_key: None,
         }
     }
 }

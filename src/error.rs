@@ -40,6 +40,9 @@ pub enum Error {
     #[error("Parser error: {0}")]
     Parser(String),
 
+    #[error("LLM error: {0}")]
+    Llm(String),
+
     #[error("{0}")]
     Other(String),
 }
@@ -74,6 +77,11 @@ impl Error {
     /// Create a generic error
     pub fn other(msg: impl Into<String>) -> Self {
         Error::Other(msg.into())
+    }
+
+    /// Create an LLM error
+    pub fn llm(msg: impl Into<String>) -> Self {
+        Error::Llm(msg.into())
     }
 }
 
