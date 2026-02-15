@@ -1,11 +1,13 @@
 // Analysis module for building and querying code graphs
 
+pub mod dynamic;
 pub mod explain;
 pub mod graph;
 pub mod imports;
 pub mod metrics;
 pub mod modules;
 
+pub use dynamic::*;
 pub use explain::*;
 pub use graph::*;
 pub use imports::*;
