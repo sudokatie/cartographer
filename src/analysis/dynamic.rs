@@ -106,8 +106,8 @@ pub struct DynamicAttrAccess {
 pub fn detect_python_dynamic_patterns(source: &str) -> DynamicPatterns {
     let mut patterns = DynamicPatterns::new();
     
-    // Known dynamic import functions
-    let dynamic_import_funcs: HashSet<&str> = 
+    // Known dynamic import functions (kept for reference, manual checks below)
+    let _dynamic_import_funcs: HashSet<&str> = 
         ["__import__", "importlib.import_module", "import_module"].into_iter().collect();
     
     // Known reflection functions

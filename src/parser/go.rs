@@ -660,7 +660,7 @@ func (p *Point) Distance(other Point) float64 {
         let file = parser.parse_source(source, "main.go".into(), "main".into()).unwrap();
         // Should have struct Point and method Point.Distance
         assert_eq!(file.classes.len(), 1);
-        assert!(file.functions.len() >= 1);
+        assert!(!file.functions.is_empty());
         // Method should be prefixed with receiver type
         assert!(file.functions.iter().any(|f| f.name == "Point.Distance"));
     }

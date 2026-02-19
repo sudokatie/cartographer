@@ -119,6 +119,7 @@ impl JavaScriptParser {
     }
 
     /// Visit a node and extract relevant constructs
+    #[allow(clippy::only_used_in_recursion)]
     fn visit_node(&self, node: &Node, source: &[u8], file: &mut ParsedFile) {
         match node.kind() {
             // Import statements
@@ -750,7 +751,7 @@ function greet(user: User): string {
         ).unwrap();
         
         // Should parse without errors
-        assert!(result.functions.len() >= 1);
+        assert!(!result.functions.is_empty());
     }
 
     #[test]

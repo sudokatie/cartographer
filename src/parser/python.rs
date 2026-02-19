@@ -874,7 +874,7 @@ mod tests {
         assert_eq!(file.imports.len(), 1);
         assert_eq!(file.imports[0].module, "os");
         assert_eq!(file.imports[0].kind, ImportKind::From);
-        assert!(file.imports[0].names.len() >= 1);
+        assert!(!file.imports[0].names.is_empty());
     }
 
     #[test]
@@ -932,7 +932,7 @@ mod tests {
     fn test_class_with_bases() {
         let file = parse("class MyClass(Base, Mixin): pass");
         assert_eq!(file.classes.len(), 1);
-        assert!(file.classes[0].bases.len() >= 1);
+        assert!(!file.classes[0].bases.is_empty());
     }
 
     #[test]
