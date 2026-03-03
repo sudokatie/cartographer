@@ -10,7 +10,7 @@ Cartographer reads your code and generates living documentation - architecture d
 
 ## Features
 
-- **Multi-language support**: Python, JavaScript, TypeScript, Rust, Go
+- **Multi-language support**: Python, JavaScript, TypeScript, Rust, Go, Java
 - **LLM explanations**: Generate natural language descriptions of modules and classes (Ollama, OpenAI)
 - **React component detection**: Automatically identifies React functional components
 - **Rust support**: Parses structs, enums, traits, impl blocks, use statements
@@ -59,6 +59,7 @@ Options:
 | TypeScript | `.ts`, `.tsx`, `.mts`, `.cts` | Same as JS + type annotations |
 | Rust | `.rs` | Structs, enums, traits, impl blocks, use statements, const/static |
 | Go | `.go` | Packages, structs, interfaces, methods, functions, const/var |
+| Java | `.java` | Classes, interfaces, enums, records, methods, fields, Javadoc |
 
 ### JavaScript/TypeScript Examples
 
@@ -117,6 +118,28 @@ Cartographer extracts from Go code:
 - Const and var declarations
 - Comments
 
+### Java Examples
+
+```bash
+# Analyze a Java project
+cartographer analyze ./my-java-project --exclude "target/**"
+
+# Analyze a Maven project
+cartographer analyze ./src/main/java
+
+# Spring Boot application
+cartographer analyze ./src --exclude "test/**"
+```
+
+Cartographer extracts from Java code:
+- Classes with inheritance and interfaces
+- Interfaces with method signatures
+- Enums with constants
+- Records (Java 16+)
+- Methods and constructors
+- Fields and their types
+- Javadoc comments (extracts description, ignores @ tags)
+
 ## Configuration
 
 Create `cartographer.toml` in your project root:
@@ -167,9 +190,11 @@ When LLM is unavailable or disabled, Cartographer falls back to template-based e
 - [x] React component detection
 - [x] Rust support
 - [x] Go support
+- [x] Java support
 - [x] LLM-generated explanations (Ollama, OpenAI)
 
 ### v0.3 (Planned)
+- [ ] C/C++ support
 - [ ] Runtime behavior detection hints
 - [ ] IDE integration
 
