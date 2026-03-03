@@ -10,7 +10,7 @@ Cartographer reads your code and generates living documentation - architecture d
 
 ## Features
 
-- **Multi-language support**: Python, JavaScript, TypeScript, Rust, Go, Java
+- **Multi-language support**: Python, JavaScript, TypeScript, Rust, Go, Java, C, C++
 - **LLM explanations**: Generate natural language descriptions of modules and classes (Ollama, OpenAI)
 - **React component detection**: Automatically identifies React functional components
 - **Rust support**: Parses structs, enums, traits, impl blocks, use statements
@@ -60,6 +60,8 @@ Options:
 | Rust | `.rs` | Structs, enums, traits, impl blocks, use statements, const/static |
 | Go | `.go` | Packages, structs, interfaces, methods, functions, const/var |
 | Java | `.java` | Classes, interfaces, enums, records, methods, fields, Javadoc |
+| C | `.c`, `.h` | Functions, structs, enums, typedefs, #include |
+| C++ | `.cpp`, `.cc`, `.cxx`, `.hpp`, `.hh`, `.hxx` | Classes, namespaces, templates, inheritance, enums |
 
 ### JavaScript/TypeScript Examples
 
@@ -140,6 +142,42 @@ Cartographer extracts from Java code:
 - Fields and their types
 - Javadoc comments (extracts description, ignores @ tags)
 
+### C Examples
+
+```bash
+# Analyze a C project
+cartographer analyze ./my-c-project --exclude "build/**"
+
+# Analyze with header files
+cartographer analyze ./src --include "include/**"
+```
+
+Cartographer extracts from C code:
+- Functions and prototypes
+- Structs with fields
+- Enums with values
+- Typedefs
+- #include directives
+- Global variables
+
+### C++ Examples
+
+```bash
+# Analyze a C++ project
+cartographer analyze ./my-cpp-project --exclude "build/**"
+
+# Analyze a CMake project
+cartographer analyze ./src --exclude "cmake-build-*/**"
+```
+
+Cartographer extracts from C++ code:
+- Classes with inheritance and access specifiers
+- Namespaces (nested names preserved)
+- Templates (marked as template)
+- Enum classes
+- Method declarations and definitions
+- Using declarations
+
 ## Configuration
 
 Create `cartographer.toml` in your project root:
@@ -191,10 +229,10 @@ When LLM is unavailable or disabled, Cartographer falls back to template-based e
 - [x] Rust support
 - [x] Go support
 - [x] Java support
+- [x] C/C++ support
 - [x] LLM-generated explanations (Ollama, OpenAI)
 
 ### v0.3 (Planned)
-- [ ] C/C++ support
 - [ ] Runtime behavior detection hints
 - [ ] IDE integration
 

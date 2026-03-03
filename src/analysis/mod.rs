@@ -16,7 +16,7 @@ pub use modules::*;
 
 use crate::config::Config;
 use crate::error::{Error, Result};
-use crate::parser::{GoParser, JavaParser, JavaScriptParser, PythonParser, RustParser};
+use crate::parser::{CParser, CppParser, GoParser, JavaParser, JavaScriptParser, PythonParser, RustParser};
 use indicatif::{ProgressBar, ProgressStyle};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -31,6 +31,8 @@ pub enum Language {
     Rust,
     Go,
     Java,
+    C,
+    Cpp,
 }
 
 impl Language {
@@ -43,6 +45,8 @@ impl Language {
             "rs" => Some(Self::Rust),
             "go" => Some(Self::Go),
             "java" => Some(Self::Java),
+            "c" | "h" => Some(Self::C),
+            "cpp" | "cc" | "cxx" | "hpp" | "hh" | "hxx" => Some(Self::Cpp),
             _ => None,
         }
     }
@@ -75,11 +79,13 @@ pub struct LanguageCounts {
     pub rust: usize,
     pub go: usize,
     pub java: usize,
+    pub c: usize,
+    pub cpp: usize,
 }
 
 impl LanguageCounts {
     pub fn total(&self) -> usize {
-        self.python + self.javascript + self.typescript + self.rust + self.go + self.java
+        self.python + self.javascript + self.typescript + self.rust + self.go + self.java + self.c + self.cpp
     }
 }
 
@@ -91,6 +97,8 @@ pub struct Analyzer {
     rust_parser: RustParser,
     go_parser: GoParser,
     java_parser: JavaParser,
+    c_parser: CParser,
+    cpp_parser: CppParser,
     verbose: bool,
 }
 
@@ -102,6 +110,8 @@ impl Analyzer {
         let rust_parser = RustParser::new()?;
         let go_parser = GoParser::new()?;
         let java_parser = JavaParser::new()?;
+        let c_parser = CParser::new()?;
+        let cpp_parser = CppParser::new()?;
         
         Ok(Self {
             config,
@@ -110,6 +120,8 @@ impl Analyzer {
             rust_parser,
             go_parser,
             java_parser,
+            c_parser,
+            cpp_parser,
             verbose: false,
         })
     }
@@ -213,6 +225,8 @@ impl Analyzer {
                     Some(Language::Rust) => counts.rust += 1,
                     Some(Language::Go) => counts.go += 1,
                     Some(Language::Java) => counts.java += 1,
+                    Some(Language::C) => counts.c += 1,
+                    Some(Language::Cpp) => counts.cpp += 1,
                     None => {}
                 }
             }
@@ -294,6 +308,8 @@ impl Analyzer {
                 Some(Language::Rust) => self.rust_parser.parse_file(path),
                 Some(Language::Go) => self.go_parser.parse_file(path),
                 Some(Language::Java) => self.java_parser.parse_file(path),
+                Some(Language::C) => self.c_parser.parse_file(path),
+                Some(Language::Cpp) => self.cpp_parser.parse_file(path),
                 None => continue,
             };
             
@@ -328,7 +344,7 @@ impl Analyzer {
         // Remove extension from last part
         if let Some(last) = parts.last_mut() {
             // Remove any supported extension
-            let extensions = [".py", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".mts", ".cts", ".rs", ".go", ".java"];
+            let extensions = [".py", ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".mts", ".cts", ".rs", ".go", ".java", ".c", ".h", ".cpp", ".cc", ".cxx", ".hpp", ".hh", ".hxx"];
             for ext in extensions {
                 if last.ends_with(ext) {
                     *last = last.trim_end_matches(ext).to_string();
@@ -358,16 +374,16 @@ impl Analyzer {
                     parts.pop();
                 }
             }
-            Some(Language::Go) | Some(Language::Java) => {
-                // Go and Java use package-based naming, no special index handling
+            Some(Language::Go) | Some(Language::Java) | Some(Language::C) | Some(Language::Cpp) => {
+                // Go, Java, C, and C++ use file-based naming, no special index handling
             }
             None => {}
         }
         
-        // Use :: for Rust, / for JS/TS/Go, . for Python/Java
+        // Use :: for Rust/C++, / for JS/TS/Go/C, . for Python/Java
         match language {
-            Some(Language::Rust) => parts.join("::"),
-            Some(Language::JavaScript) | Some(Language::TypeScript) | Some(Language::Go) => parts.join("/"),
+            Some(Language::Rust) | Some(Language::Cpp) => parts.join("::"),
+            Some(Language::JavaScript) | Some(Language::TypeScript) | Some(Language::Go) | Some(Language::C) => parts.join("/"),
             Some(Language::Python) | Some(Language::Java) | None => parts.join("."),
         }
     }
@@ -914,6 +930,166 @@ class Person {
         assert_eq!(
             analyzer.path_to_module_name(Path::new("/project/com/example/App.java"), root, Some(Language::Java)),
             "com.example.App"
+        );
+    }
+
+    #[test]
+    fn test_discover_c_files() {
+        let dir = TempDir::new().unwrap();
+        
+        // Create C files
+        fs::write(dir.path().join("main.c"), "int main() { return 0; }").unwrap();
+        fs::write(dir.path().join("utils.h"), "void helper();").unwrap();
+        fs::write(dir.path().join("script.py"), "x = 1").unwrap();
+        
+        let config = Config::default();
+        let analyzer = Analyzer::new(config).unwrap();
+        
+        let files = analyzer.discover_files(dir.path()).unwrap();
+        assert_eq!(files.len(), 3); // 2 C + 1 Python
+        
+        let counts = analyzer.file_counts(dir.path()).unwrap();
+        assert_eq!(counts.c, 2);
+        assert_eq!(counts.python, 1);
+    }
+
+    #[test]
+    fn test_analyze_c_project() {
+        let dir = TempDir::new().unwrap();
+        
+        // Create a simple C project
+        fs::write(
+            dir.path().join("main.c"),
+            r#"
+#include <stdio.h>
+
+struct Point {
+    int x;
+    int y;
+};
+
+int add(int a, int b) {
+    return a + b;
+}
+
+int main() {
+    printf("hello\n");
+    return 0;
+}
+"#,
+        ).unwrap();
+        
+        let config = Config::default();
+        let mut analyzer = Analyzer::new(config).unwrap();
+        
+        let result = analyzer.analyze(dir.path()).unwrap();
+        
+        // Should have 1 C file
+        assert_eq!(result.graph.stats().files, 1);
+        
+        // Should have add and main functions
+        assert!(result.graph.stats().functions >= 2);
+        
+        // Should have Point struct
+        assert!(result.graph.stats().classes >= 1);
+    }
+
+    #[test]
+    fn test_discover_cpp_files() {
+        let dir = TempDir::new().unwrap();
+        
+        // Create C++ files
+        fs::write(dir.path().join("main.cpp"), "int main() { return 0; }").unwrap();
+        fs::write(dir.path().join("utils.hpp"), "class Utils {};").unwrap();
+        fs::write(dir.path().join("impl.cc"), "void foo() {}").unwrap();
+        fs::write(dir.path().join("script.py"), "x = 1").unwrap();
+        
+        let config = Config::default();
+        let analyzer = Analyzer::new(config).unwrap();
+        
+        let files = analyzer.discover_files(dir.path()).unwrap();
+        assert_eq!(files.len(), 4); // 3 C++ + 1 Python
+        
+        let counts = analyzer.file_counts(dir.path()).unwrap();
+        assert_eq!(counts.cpp, 3);
+        assert_eq!(counts.python, 1);
+    }
+
+    #[test]
+    fn test_analyze_cpp_project() {
+        let dir = TempDir::new().unwrap();
+        
+        // Create a simple C++ project
+        fs::write(
+            dir.path().join("main.cpp"),
+            r#"
+#include <iostream>
+
+namespace myapp {
+
+class Point {
+public:
+    int x;
+    int y;
+};
+
+void greet() {
+    std::cout << "hello" << std::endl;
+}
+
+}
+
+int main() {
+    myapp::greet();
+    return 0;
+}
+"#,
+        ).unwrap();
+        
+        let config = Config::default();
+        let mut analyzer = Analyzer::new(config).unwrap();
+        
+        let result = analyzer.analyze(dir.path()).unwrap();
+        
+        // Should have 1 C++ file
+        assert_eq!(result.graph.stats().files, 1);
+        
+        // Should have greet and main functions
+        assert!(result.graph.stats().functions >= 2);
+        
+        // Should have Point class
+        assert!(result.graph.stats().classes >= 1);
+    }
+
+    #[test]
+    fn test_path_to_module_name_c() {
+        let config = Config::default();
+        let analyzer = Analyzer::new(config).unwrap();
+        let root = Path::new("/project");
+        
+        assert_eq!(
+            analyzer.path_to_module_name(Path::new("/project/src/main.c"), root, Some(Language::C)),
+            "src/main"
+        );
+        assert_eq!(
+            analyzer.path_to_module_name(Path::new("/project/include/utils.h"), root, Some(Language::C)),
+            "include/utils"
+        );
+    }
+
+    #[test]
+    fn test_path_to_module_name_cpp() {
+        let config = Config::default();
+        let analyzer = Analyzer::new(config).unwrap();
+        let root = Path::new("/project");
+        
+        assert_eq!(
+            analyzer.path_to_module_name(Path::new("/project/src/main.cpp"), root, Some(Language::Cpp)),
+            "src::main"
+        );
+        assert_eq!(
+            analyzer.path_to_module_name(Path::new("/project/include/utils.hpp"), root, Some(Language::Cpp)),
+            "include::utils"
         );
     }
 }
