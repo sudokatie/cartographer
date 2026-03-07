@@ -191,6 +191,69 @@ fn execute(args: Args) -> Result<()> {
             Ok(())
         }
 
+        Command::Export {
+            path,
+            format,
+            output,
+            depth,
+            module,
+            include,
+            exclude,
+            direction,
+            no_externals,
+            cluster,
+        } => {
+            use crate::output::{ExportFormat, ExportOptions, GraphExporter};
+
+            if !path.exists() {
+                return Err(crate::error::Error::PathNotFound(path));
+            }
+
+            // Parse export format
+            let export_format = ExportFormat::from_str(&format)?;
+
+            // Load default config and set include/exclude
+            let mut cfg = Config::default();
+            cfg.analysis.include = include;
+            cfg.analysis.exclude = exclude;
+            cfg.analysis.max_depth = depth;
+
+            // Run analysis
+            let mut analyzer = Analyzer::new(cfg)?;
+            eprintln!("Analyzing {}...", path.display());
+            let analysis = analyzer.analyze(&path)?;
+
+            // Create export options
+            let options = ExportOptions {
+                format: export_format,
+                depth,
+                module_filters: module,
+                direction,
+                no_externals,
+                cluster,
+            };
+
+            let exporter = GraphExporter::new(options);
+            
+            // Export to file or stdout
+            if let Some(output_path) = output {
+                exporter.export_to_file(&analysis, &output_path)?;
+                eprintln!("Graph exported to: {}", output_path.display());
+            } else if export_format.is_image() {
+                // Image formats require a file
+                let default_name = format!("graph.{}", export_format.extension());
+                let output_path = std::path::PathBuf::from(default_name);
+                exporter.export_to_file(&analysis, &output_path)?;
+                eprintln!("Graph exported to: {}", output_path.display());
+            } else {
+                // Text formats can go to stdout
+                let content = exporter.export(&analysis)?;
+                println!("{}", content);
+            }
+
+            Ok(())
+        }
+
         Command::Version => {
             println!("cartographer {}", env!("CARGO_PKG_VERSION"));
             Ok(())

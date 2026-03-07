@@ -73,6 +73,48 @@ pub enum Command {
         port: u16,
     },
 
+    /// Export dependency graph to various formats
+    Export {
+        /// Path to the codebase to analyze
+        path: PathBuf,
+
+        /// Output format: dot, mermaid, svg, png
+        #[arg(short, long, default_value = "mermaid")]
+        format: String,
+
+        /// Output file path (default: stdout for text formats)
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Max dependency depth
+        #[arg(long, default_value = "5")]
+        depth: usize,
+
+        /// Filter to specific module(s) (glob pattern, repeatable)
+        #[arg(long)]
+        module: Vec<String>,
+
+        /// Include patterns for source files
+        #[arg(long, default_value = "**/*.py")]
+        include: Vec<String>,
+
+        /// Exclude patterns for source files
+        #[arg(long)]
+        exclude: Vec<String>,
+
+        /// Graph direction: TB, LR, BT, RL
+        #[arg(long, default_value = "TB")]
+        direction: String,
+
+        /// Exclude external/third-party dependencies
+        #[arg(long)]
+        no_externals: bool,
+
+        /// Group nodes by module (subgraphs)
+        #[arg(long)]
+        cluster: bool,
+    },
+
     /// Show version information
     Version,
 }
