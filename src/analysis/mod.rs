@@ -1,5 +1,6 @@
 // Analysis module for building and querying code graphs
 
+pub mod cache;
 pub mod dynamic;
 pub mod explain;
 pub mod graph;
@@ -7,6 +8,7 @@ pub mod imports;
 pub mod metrics;
 pub mod modules;
 
+pub use cache::*;
 pub use dynamic::*;
 pub use explain::*;
 pub use graph::*;
@@ -100,6 +102,8 @@ pub struct Analyzer {
     c_parser: CParser,
     cpp_parser: CppParser,
     verbose: bool,
+    incremental: bool,
+    cache: Option<AnalysisCache>,
 }
 
 impl Analyzer {
@@ -123,12 +127,20 @@ impl Analyzer {
             c_parser,
             cpp_parser,
             verbose: false,
+            incremental: false,
+            cache: None,
         })
     }
     
     /// Create analyzer with verbose output
     pub fn with_verbose(mut self, verbose: bool) -> Self {
         self.verbose = verbose;
+        self
+    }
+    
+    /// Enable incremental analysis mode
+    pub fn with_incremental(mut self, incremental: bool) -> Self {
+        self.incremental = incremental;
         self
     }
     
@@ -140,6 +152,21 @@ impl Analyzer {
                 format!("Cannot access path: {}", e),
             ))
         })?;
+        
+        // Load cache if incremental mode is enabled
+        if self.incremental {
+            let config_hash = hash_config(&self.config);
+            self.cache = AnalysisCache::load(&root, &config_hash);
+            
+            if self.verbose {
+                if let Some(ref cache) = self.cache {
+                    let stats = cache.stats();
+                    eprintln!("Loaded cache with {} entries", stats.entries);
+                } else {
+                    eprintln!("No valid cache found, full analysis required");
+                }
+            }
+        }
         
         // Step 1: Discover source files (all supported languages)
         let source_files = self.discover_files(&root)?;
@@ -164,6 +191,20 @@ impl Analyzer {
         // Step 6: Calculate metrics
         let metrics_calculator = MetricsCalculator::new(import_resolver);
         let metrics = metrics_calculator.calculate_project(&graph);
+        
+        // Save cache if incremental mode is enabled
+        if self.incremental {
+            if let Some(ref mut cache) = self.cache {
+                cache.prune(&root);
+                if let Err(e) = cache.save(&root) {
+                    if self.verbose {
+                        eprintln!("Warning: Failed to save cache: {}", e);
+                    }
+                } else if self.verbose {
+                    eprintln!("Cache saved with {} entries", cache.stats().entries);
+                }
+            }
+        }
         
         Ok(AnalysisResult {
             graph,
@@ -276,6 +317,8 @@ impl Analyzer {
     ) -> Result<(CodeGraph, HashMap<PathBuf, String>)> {
         let mut graph = CodeGraph::new();
         let mut errors = HashMap::new();
+        let mut cache_hits = 0usize;
+        let mut cache_misses = 0usize;
         
         let progress = if self.verbose {
             let pb = ProgressBar::new(files.len() as u64);
@@ -290,6 +333,9 @@ impl Analyzer {
             None
         };
         
+        // Check if we have a cache to use
+        let use_cache = self.incremental && self.cache.is_some();
+        
         for path in files {
             if let Some(ref pb) = progress {
                 let msg = path.file_name().unwrap_or_default().to_string_lossy().to_string();
@@ -299,6 +345,23 @@ impl Analyzer {
             
             let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
             let language = Language::from_extension(ext);
+            
+            // Try to get from cache first
+            if use_cache {
+                if let Some(ref cache) = self.cache {
+                    if let Some(cached) = cache.get(path, root) {
+                        // Use cached parsed file
+                        let mut parsed_file = cached.clone();
+                        parsed_file.module_name = self.path_to_module_name(path, root, language);
+                        graph.add_file(&parsed_file);
+                        cache_hits += 1;
+                        continue;
+                    }
+                }
+            }
+            
+            // Cache miss - parse the file
+            cache_misses += 1;
             
             let parse_result = match language {
                 Some(Language::Python) => self.python_parser.parse_file(path),
@@ -317,6 +380,18 @@ impl Analyzer {
                 Ok(mut parsed_file) => {
                     // Set the module name based on path and language
                     parsed_file.module_name = self.path_to_module_name(path, root, language);
+                    
+                    // Store in cache for next time
+                    if self.incremental {
+                        if self.cache.is_none() {
+                            let config_hash = hash_config(&self.config);
+                            self.cache = Some(AnalysisCache::new(root, &config_hash));
+                        }
+                        if let Some(ref mut cache) = self.cache {
+                            let _ = cache.put(path, root, parsed_file.clone());
+                        }
+                    }
+                    
                     graph.add_file(&parsed_file);
                 }
                 Err(e) => {
@@ -326,7 +401,14 @@ impl Analyzer {
         }
         
         if let Some(pb) = progress {
-            pb.finish_with_message("Parsing complete");
+            if self.incremental {
+                pb.finish_with_message(format!(
+                    "Parsing complete (cache: {} hits, {} misses)",
+                    cache_hits, cache_misses
+                ));
+            } else {
+                pb.finish_with_message("Parsing complete");
+            }
         }
         
         Ok((graph, errors))

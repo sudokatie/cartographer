@@ -39,6 +39,7 @@ fn execute(args: Args) -> Result<()> {
             no_diagrams,
             no_explain,
             verbose,
+            incremental,
         } => {
             // Load config file if it exists
             let mut cfg = if let Some(config_path) = &config {
@@ -79,7 +80,9 @@ fn execute(args: Args) -> Result<()> {
             }
 
             // Create and run analyzer
-            let mut analyzer = Analyzer::new(cfg.clone())?.with_verbose(verbose);
+            let mut analyzer = Analyzer::new(cfg.clone())?
+                .with_verbose(verbose)
+                .with_incremental(incremental);
 
             println!("Discovering files...");
             let counts = analyzer.file_counts(&path)?;

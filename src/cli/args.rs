@@ -61,6 +61,10 @@ pub enum Command {
         /// Verbose output
         #[arg(short, long)]
         verbose: bool,
+
+        /// Use incremental analysis (cache unchanged files)
+        #[arg(long)]
+        incremental: bool,
     },
 
     /// Serve generated documentation locally
@@ -127,12 +131,24 @@ mod tests {
     fn test_analyze_defaults() {
         let args = Args::try_parse_from(["cartographer", "analyze", "./src"]).unwrap();
         match args.command {
-            Command::Analyze { path, output, depth, format, include, .. } => {
+            Command::Analyze { path, output, depth, format, include, incremental, .. } => {
                 assert_eq!(path, PathBuf::from("./src"));
                 assert_eq!(output, PathBuf::from("./cartographer-docs"));
                 assert_eq!(depth, 5);
                 assert_eq!(format, "html");
                 assert_eq!(include, vec!["**/*.py".to_string()]);
+                assert!(!incremental);
+            }
+            _ => panic!("Expected Analyze command"),
+        }
+    }
+    
+    #[test]
+    fn test_analyze_incremental() {
+        let args = Args::try_parse_from(["cartographer", "analyze", "./src", "--incremental"]).unwrap();
+        match args.command {
+            Command::Analyze { incremental, .. } => {
+                assert!(incremental);
             }
             _ => panic!("Expected Analyze command"),
         }
@@ -152,12 +168,13 @@ mod tests {
             "--no-diagrams",
             "--no-explain",
             "--verbose",
+            "--incremental",
         ]).unwrap();
         
         match args.command {
             Command::Analyze { 
                 path, output, exclude, include, config, 
-                format, depth, no_diagrams, no_explain, verbose 
+                format, depth, no_diagrams, no_explain, verbose, incremental 
             } => {
                 assert_eq!(path, PathBuf::from("./project"));
                 assert_eq!(output, PathBuf::from("/tmp/docs"));
@@ -169,6 +186,7 @@ mod tests {
                 assert!(no_diagrams);
                 assert!(no_explain);
                 assert!(verbose);
+                assert!(incremental);
             }
             _ => panic!("Expected Analyze command"),
         }
