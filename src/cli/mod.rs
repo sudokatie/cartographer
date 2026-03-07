@@ -210,7 +210,7 @@ fn execute(args: Args) -> Result<()> {
             }
 
             // Parse export format
-            let export_format = ExportFormat::from_str(&format)?;
+            let export_format = ExportFormat::parse(&format)?;
 
             // Load default config and set include/exclude
             let mut cfg = Config::default();

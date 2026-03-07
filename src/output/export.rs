@@ -19,7 +19,7 @@ pub enum ExportFormat {
 }
 
 impl ExportFormat {
-    pub fn from_str(s: &str) -> Result<Self> {
+    pub fn parse(s: &str) -> Result<Self> {
         match s.to_lowercase().as_str() {
             "dot" => Ok(ExportFormat::Dot),
             "mermaid" | "mmd" => Ok(ExportFormat::Mermaid),
@@ -97,12 +97,12 @@ impl GraphExporter {
         if self.options.format.is_image() {
             // For image formats, content is already the binary data (base64 or raw)
             std::fs::write(path, content.as_bytes())
-                .map_err(|e| Error::Io(e))?;
+                .map_err(Error::Io)?;
         } else {
             let mut file = std::fs::File::create(path)
-                .map_err(|e| Error::Io(e))?;
+                .map_err(Error::Io)?;
             file.write_all(content.as_bytes())
-                .map_err(|e| Error::Io(e))?;
+                .map_err(Error::Io)?;
         }
         Ok(())
     }
@@ -352,11 +352,11 @@ impl GraphExporter {
         // Write DOT to stdin
         if let Some(stdin) = child.stdin.as_mut() {
             stdin.write_all(dot.as_bytes())
-                .map_err(|e| Error::Io(e))?;
+                .map_err(Error::Io)?;
         }
 
         let output = child.wait_with_output()
-            .map_err(|e| Error::Io(e))?;
+            .map_err(Error::Io)?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -407,13 +407,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_export_format_from_str() {
-        assert_eq!(ExportFormat::from_str("dot").unwrap(), ExportFormat::Dot);
-        assert_eq!(ExportFormat::from_str("mermaid").unwrap(), ExportFormat::Mermaid);
-        assert_eq!(ExportFormat::from_str("mmd").unwrap(), ExportFormat::Mermaid);
-        assert_eq!(ExportFormat::from_str("svg").unwrap(), ExportFormat::Svg);
-        assert_eq!(ExportFormat::from_str("png").unwrap(), ExportFormat::Png);
-        assert!(ExportFormat::from_str("invalid").is_err());
+    fn test_export_format_parse() {
+        assert_eq!(ExportFormat::parse("dot").unwrap(), ExportFormat::Dot);
+        assert_eq!(ExportFormat::parse("mermaid").unwrap(), ExportFormat::Mermaid);
+        assert_eq!(ExportFormat::parse("mmd").unwrap(), ExportFormat::Mermaid);
+        assert_eq!(ExportFormat::parse("svg").unwrap(), ExportFormat::Svg);
+        assert_eq!(ExportFormat::parse("png").unwrap(), ExportFormat::Png);
+        assert!(ExportFormat::parse("invalid").is_err());
     }
 
     #[test]
