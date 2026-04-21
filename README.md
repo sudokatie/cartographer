@@ -233,8 +233,8 @@ When LLM is unavailable or disabled, Cartographer falls back to template-based e
 - [x] LLM-generated explanations (Ollama, OpenAI)
 
 ### v0.3 (Planned)
-- [ ] Runtime behavior detection hints
-- [ ] IDE integration
+- [x] Runtime behavior detection hints
+- [ ] IDE integration (LSP server)
 
 ## License
 
