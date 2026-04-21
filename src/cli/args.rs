@@ -121,6 +121,9 @@ pub enum Command {
 
     /// Show version information
     Version,
+
+    /// Start the LSP server
+    Lsp,
 }
 
 #[cfg(test)]
@@ -219,5 +222,11 @@ mod tests {
     fn test_version_command() {
         let args = Args::try_parse_from(["cartographer", "version"]).unwrap();
         assert!(matches!(args.command, Command::Version));
+    }
+
+    #[test]
+    fn test_lsp_command() {
+        let args = Args::try_parse_from(["cartographer", "lsp"]).unwrap();
+        assert!(matches!(args.command, Command::Lsp));
     }
 }

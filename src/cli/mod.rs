@@ -261,6 +261,14 @@ fn execute(args: Args) -> Result<()> {
             println!("cartographer {}", env!("CARGO_PKG_VERSION"));
             Ok(())
         }
+
+        Command::Lsp => {
+            eprintln!("Starting Cartographer LSP server...");
+            let rt = tokio::runtime::Runtime::new()
+                .map_err(|e| crate::error::Error::Other(format!("Failed to create runtime: {}", e)))?;
+            rt.block_on(crate::lsp::run_server());
+            Ok(())
+        }
     }
 }
 

@@ -221,6 +221,42 @@ Supported providers:
 
 When LLM is unavailable or disabled, Cartographer falls back to template-based explanations.
 
+## LSP Server
+
+Cartographer includes a Language Server Protocol (LSP) implementation for IDE integration.
+
+### Usage
+
+```bash
+# Start the LSP server (typically invoked by IDE extensions)
+cartographer lsp
+```
+
+### Features
+
+- **Hover Information**: View module, class, and function details with documentation and metrics
+- **Document Symbols**: Navigate to classes, functions, and methods (Outline view)
+- **Workspace Symbols**: Search for symbols across your entire workspace
+- **Go to Definition**: Jump to symbol definitions, including cross-file navigation
+- **Diagnostics**: Real-time warnings for:
+  - Circular dependencies (Error)
+  - High complexity modules (Warning)
+  - Missing documentation (Hint)
+- **Code Lens**: View method counts on classes
+
+### VS Code Extension
+
+Install the VS Code extension from `editors/vscode/`:
+
+```bash
+cd editors/vscode
+npm install
+npm run package
+# Install the generated .vsix file in VS Code
+```
+
+See `editors/vscode/README.md` for detailed setup instructions.
+
 ## Roadmap
 
 ### v0.2 (Current)
@@ -232,9 +268,9 @@ When LLM is unavailable or disabled, Cartographer falls back to template-based e
 - [x] C/C++ support
 - [x] LLM-generated explanations (Ollama, OpenAI)
 
-### v0.3 (Planned)
+### v0.3 (Current)
 - [x] Runtime behavior detection hints
-- [ ] IDE integration (LSP server)
+- [x] IDE integration (LSP server)
 
 ## License
 

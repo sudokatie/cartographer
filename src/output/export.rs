@@ -110,7 +110,7 @@ impl GraphExporter {
     /// Generate DOT format (Graphviz)
     fn export_dot(&self, analysis: &AnalysisResult) -> Result<String> {
         let mut lines = Vec::new();
-        lines.push(format!("digraph dependencies {{"));
+        lines.push("digraph dependencies {".to_string());
         lines.push(format!("    rankdir={};", self.options.direction));
         lines.push("    node [shape=box, style=filled, fontname=\"Helvetica\"];".to_string());
         lines.push("    edge [color=\"#666666\"];".to_string());
@@ -152,7 +152,7 @@ impl GraphExporter {
                 lines.push("        color=lightgrey;".to_string());
                 for (file_id, name) in files {
                     let node_id = format!("f{}", file_id.0);
-                    let color = self.get_node_color(&file_to_module.get(file_id).unwrap_or(&"".to_string()));
+                    let color = self.get_node_color(file_to_module.get(file_id).unwrap_or(&"".to_string()));
                     lines.push(format!("        {} [label=\"{}\", fillcolor=\"{}\"];", node_id, name, color));
                 }
                 lines.push("    }".to_string());
@@ -371,18 +371,12 @@ impl GraphExporter {
 
 /// Sanitize an identifier for DOT format
 fn sanitize_dot_id(s: &str) -> String {
-    s.replace('.', "_")
-        .replace('/', "_")
-        .replace('-', "_")
-        .replace(' ', "_")
+    s.replace(['.', '/', '-', ' '], "_")
 }
 
 /// Sanitize an identifier for Mermaid format
 fn sanitize_mermaid_id(s: &str) -> String {
-    s.replace('.', "_")
-        .replace('/', "_")
-        .replace('-', "_")
-        .replace(' ', "_")
+    s.replace(['.', '/', '-', ' '], "_")
 }
 
 /// Simple glob matching for module patterns
@@ -391,12 +385,10 @@ fn glob_match(pattern: &str, s: &str) -> bool {
     if pattern == "*" {
         return true;
     }
-    if pattern.ends_with("*") {
-        let prefix = &pattern[..pattern.len() - 1];
+    if let Some(prefix) = pattern.strip_suffix("*") {
         return s.starts_with(prefix);
     }
-    if pattern.starts_with("*") {
-        let suffix = &pattern[1..];
+    if let Some(suffix) = pattern.strip_prefix("*") {
         return s.ends_with(suffix);
     }
     pattern == s

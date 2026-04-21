@@ -7,6 +7,20 @@
     "module": "root"
   },
   {
+    "name": "models",
+    "kind": "file",
+    "path": "modules/models/index.html",
+    "description": "Data models for the simple project.",
+    "module": "models"
+  },
+  {
+    "name": "main",
+    "kind": "file",
+    "path": "modules/main/index.html",
+    "description": "Main entry point for the simple project.",
+    "module": "main"
+  },
+  {
     "name": "",
     "kind": "file",
     "path": "modules//index.html",
@@ -21,32 +35,11 @@
     "module": "utils"
   },
   {
-    "name": "main",
-    "kind": "file",
-    "path": "modules/main/index.html",
-    "description": "Main entry point for the simple project.",
-    "module": "main"
-  },
-  {
-    "name": "models",
-    "kind": "file",
-    "path": "modules/models/index.html",
-    "description": "Data models for the simple project.",
-    "module": "models"
-  },
-  {
     "name": "Admin",
     "kind": "class",
     "path": "modules/models/admin.html",
     "description": "An admin user with extra privileges.",
     "module": "models"
-  },
-  {
-    "name": "chunk_list",
-    "kind": "function",
-    "path": "modules/utils/index.html",
-    "description": "Split a list into chunks of the given size.",
-    "module": "utils"
   },
   {
     "name": "format_name",
@@ -56,17 +49,24 @@
     "module": "utils"
   },
   {
-    "name": "main",
-    "kind": "function",
-    "path": "modules/main/index.html",
-    "description": "Run the main application.",
-    "module": "main"
-  },
-  {
     "name": "slugify",
     "kind": "function",
     "path": "modules/utils/index.html",
     "description": "Convert text to a URL-friendly slug.",
     "module": "utils"
+  },
+  {
+    "name": "chunk_list",
+    "kind": "function",
+    "path": "modules/utils/index.html",
+    "description": "Split a list into chunks of the given size.",
+    "module": "utils"
+  },
+  {
+    "name": "main",
+    "kind": "function",
+    "path": "modules/main/index.html",
+    "description": "Run the main application.",
+    "module": "main"
   }
 ]

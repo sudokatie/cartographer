@@ -7,6 +7,7 @@ pub mod analysis;
 pub mod cli;
 pub mod config;
 pub mod error;
+pub mod lsp;
 pub mod output;
 pub mod parser;
 

@@ -1,0 +1,116 @@
+{
+  "name": "cartographer-lsp",
+  "displayName": "Cartographer",
+  "description": "Architecture documentation and code analysis for your codebase",
+  "version": "0.1.0",
+  "publisher": "cartographer",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/cartographer"
+  },
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:rust",
+    "onLanguage:python",
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onLanguage:go",
+    "onLanguage:java",
+    "onLanguage:c",
+    "onLanguage:cpp"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "cartographer.analyzeWorkspace",
+        "title": "Cartographer: Analyze Workspace"
+      },
+      {
+        "command": "cartographer.restartServer",
+        "title": "Cartographer: Restart Language Server"
+      }
+    ],
+    "configuration": {
+      "title": "Cartographer",
+      "properties": {
+        "cartographer.binaryPath": {
+          "type": "string",
+          "default": "cartographer",
+          "description": "Path to the cartographer binary. If not absolute, it will be looked up in PATH."
+        },
+        "cartographer.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Traces the communication between VS Code and the language server."
+        },
+        "cartographer.analysis.exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "node_modules/**",
+            "target/**",
+            "venv/**",
+            ".git/**",
+            "__pycache__/**"
+          ],
+          "description": "Glob patterns to exclude from analysis."
+        },
+        "cartographer.analysis.maxDepth": {
+          "type": "number",
+          "default": 5,
+          "description": "Maximum dependency depth for analysis."
+        },
+        "cartographer.diagnostics.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable diagnostics for circular dependencies and complexity warnings."
+        },
+        "cartographer.diagnostics.circularDependencies": {
+          "type": "boolean",
+          "default": true,
+          "description": "Report circular dependencies as errors."
+        },
+        "cartographer.diagnostics.missingDocs": {
+          "type": "boolean",
+          "default": false,
+          "description": "Report missing documentation as hints."
+        },
+        "cartographer.diagnostics.complexity": {
+          "type": "boolean",
+          "default": true,
+          "description": "Report high complexity modules as warnings."
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.75.0",
+    "@vscode/vsce": "^2.22.0"
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "echo 'No compilation needed for JS extension'",
+    "watch": "echo 'No watch needed for JS extension'",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  }
+}
